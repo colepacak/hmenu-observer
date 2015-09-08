@@ -1,0 +1,36 @@
+@import "../../bower_components/compass-mixins/lib/compass";
+@import "../../bower_components/breakpoint-sass/stylesheets/breakpoint";
+
+.demo-simple {
+  * {
+    @include box-sizing(border-box);
+  }
+  &.horizontal-menu {
+    position: relative;
+    > ul {
+      position: relative;
+    }
+  }
+  ul {
+    @include legacy-pie-clearfix;
+    position: absolute;
+    z-index: 0;
+    bottom: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  li {
+    position: relative;
+    float: left;
+    width: 50%;
+    text-align: center;
+  }
+  a {
+    display: block;
+    position: relative;
+    z-index: 1;
+    padding: 5px;
+    background: #f1f1f1;
+  }
+}
