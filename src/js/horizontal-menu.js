@@ -1,4 +1,5 @@
 $(function() {
+
   class Subject {
 
     constructor() {
@@ -21,12 +22,77 @@ $(function() {
     }
   }
 
-  //var testObserver = $('.horizontal-menu');
-  $('.horizontal-menu').on('woof', function() {
-    console.log('crikey, ive been woofed');
-  });
+  class Menu {
+    constructor(elem) {
+      this.elem = $(elem);
+      this.lists = null;
+      this.items = null;
+    }
+    init() {
+      this
+        .assignIds()
+        .initChildComponents();
+    }
+    assignIds() {
+      var uls = $('ul', this.elem);
+      uls.each(function() {
+        assignId.call(this, 'hm-list-');
+      });
 
-  var s = new Subject();
-  s.addObserver($('.horizontal-menu'));
-  s.notifyObservers('woof');
+      var lis = $('li', this.elem);
+      lis.each(function() {
+        assignId.call(this, 'hm-item-');
+      });
+
+      function assignId(prefix) {
+        $(this).attr('id', prefix + $.uuid());
+      }
+
+      return this;
+    }
+    initChildComponents() {
+      var uls = $('ul', this.elem);
+      this.lists = uls.map(function() {
+        return new List($(this).attr('id'));
+      });
+
+      var lis = $('li', this.elem);
+      this.items = lis.map(function() {
+        return new Item($(this).attr('id'));
+      });
+
+      return this;
+    }
+    // register observers on child components
+  }
+
+  class List extends Subject {
+    constructor(id) {
+      super();
+      this.id = id;
+      this.elem = $('#' + id);
+      //this.children = this.elem.children().map(function() {
+      //
+      //});
+      //this.numChildren = this.elem.children().length;
+    }
+    registerObservers() {
+
+    }
+  }
+
+  class Item extends Subject {
+    constructor(id) {
+      super();
+      this.id = id;
+      this.elem = $('#' + id);
+    }
+    registersObservers() {
+      // use some sort of Subject interface that includes registerObservers method
+    }
+  }
+
+  var menu = new Menu('.horizontal-menu');
+  menu.init();
+
 });
