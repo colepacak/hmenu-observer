@@ -31,39 +31,54 @@ $(function() {
     init() {
       this
         .assignIds()
-        .initChildComponents();
+        .bindEvents();
     }
     assignIds() {
       var uls = $('ul', this.elem);
       uls.each(function() {
         assignId.call(this, 'hm-list-');
+        assignClass.call(this, 'hm-list');
       });
 
       var lis = $('li', this.elem);
       lis.each(function() {
         assignId.call(this, 'hm-item-');
+        assignClass.call(this, 'hm-item');
       });
 
       function assignId(prefix) {
         $(this).attr('id', prefix + $.uuid());
       }
 
-      return this;
-    }
-    initChildComponents() {
-      var uls = $('ul', this.elem);
-      this.lists = uls.map(function() {
-        return new List($(this).attr('id'));
-      });
-
-      var lis = $('li', this.elem);
-      this.items = lis.map(function() {
-        return new Item($(this).attr('id'));
-      });
+      function assignClass(name) {
+        $(this).addClass(name);
+      }
 
       return this;
     }
-    // register observers on child components
+    static loadComponent(id) {
+      var obj;
+      var elem = $('#' + id);
+
+      if (!elem.length) { return; }
+
+      var tag = elem.prop('tagName');
+
+      if (tag === 'LI' && elem.hasClass('hm-item')) {
+        obj = new Item(id);
+      } else if (tag === 'UL' && elem.hasClass('hm-list')) {
+        obj = new List(id);
+      }
+      return obj;
+    }
+    bindEvents() {
+      $('a', this.elem).on('click', function(e) {
+        e.preventDefault();
+        var item = new Item($(this).parent().attr('id'));
+        item.init();
+      });
+      return this;
+    }
   }
 
   class List extends Subject {
@@ -71,13 +86,10 @@ $(function() {
       super();
       this.id = id;
       this.elem = $('#' + id);
-      //this.children = this.elem.children().map(function() {
-      //
-      //});
-      //this.numChildren = this.elem.children().length;
     }
-    registerObservers() {
-
+    registerObservers() {}
+    receiveMessage(msg) {
+      console.log(msg);
     }
   }
 
@@ -86,9 +98,57 @@ $(function() {
       super();
       this.id = id;
       this.elem = $('#' + id);
+      this.parentId = Item.assignParentId(this.elem);
+      this.childId = Item.assignChildId(this.elem);
+      this.siblingIds = Item.assignSiblingIds.call(this, this.elem);
     }
-    registersObservers() {
-      // use some sort of Subject interface that includes registerObservers method
+    init() {
+      this.addObservers();
+    }
+    // what if family props are added in the constructor so that full objects are able to be added as observers?
+    // that way the subject doens't need to mess with passing in ids and class names
+    // and then when child state is needed, get child, run init (which adds observers) if necessary
+    // when is registering observers necessary? outside object shouldn't have to fuss
+    // but i think it's reasonble that when notifying observers, the subject can call init (use interface) and then
+    // run common method
+
+    // in order to avoid each object have a fully loaded version of all objects, now we have ids
+    // at some point, these ids will be needed to init objects
+    // a DB approach could be taken where a unique id is provided and the corresponding class is returned
+    // that could be better than making subjects know too much about their observers
+
+    // also, how should observers we stored, as ids or objects?
+    // options are:
+    // #1 store as ids, when notified, init object
+
+    addObservers() {
+      var observerIds = [];
+
+      observerIds.push(this.parentId, this.childId);
+      this.siblingIds.forEach(id => {
+        observerIds.push(id);
+      });
+
+      observerIds.forEach(id => {
+        var obj = Menu.loadComponent(id);
+        this.addObserver(obj);
+      }, this);
+
+      return this;
+    }
+    static assignParentId(elem) {
+      return elem.parent().attr('id');
+    }
+    static assignChildId(elem) {
+      if (elem.children('ul').length === 1) {
+        return elem.children('ul').attr('id');
+      }
+    }
+    static assignSiblingIds(elem) {
+      var siblings = elem.siblings('li');
+      return siblings.map(function() {
+        return $(this).attr('id');
+      }).get();
     }
   }
 
