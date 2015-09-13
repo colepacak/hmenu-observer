@@ -75,7 +75,10 @@ $(function() {
       $('a', this.elem).on('click', function(e) {
         e.preventDefault();
         var item = new Item($(this).parent().attr('id'));
-        item.init();
+        // init, which registers observers, then notify observers
+        item
+          .init()
+          .handleClick();
       });
       return this;
     }
@@ -86,10 +89,7 @@ $(function() {
       super();
       this.id = id;
       this.elem = $('#' + id);
-    }
-    registerObservers() {}
-    receiveMessage(msg) {
-      console.log(msg);
+      this.openState = 'closed';
     }
   }
 
@@ -103,7 +103,8 @@ $(function() {
       this.siblingIds = Item.assignSiblingIds.call(this, this.elem);
     }
     init() {
-      this.addObservers();
+      this.registerObservers();
+      return this;
     }
     // what if family props are added in the constructor so that full objects are able to be added as observers?
     // that way the subject doens't need to mess with passing in ids and class names
@@ -120,8 +121,10 @@ $(function() {
     // also, how should observers we stored, as ids or objects?
     // options are:
     // #1 store as ids, when notified, init object
-
-    addObservers() {
+    hasChild() {
+      return this.childId ? true : false;
+    }
+    registerObservers() {
       var observerIds = [];
 
       observerIds.push(this.parentId, this.childId);
@@ -136,13 +139,25 @@ $(function() {
 
       return this;
     }
+    handleClick() {
+      if (!this.hasChild()) { return; }
+
+      var child = new List(this.childId);
+      if (child.openState === 'closed') {
+        // notify observers 'list-is-opening';
+        var test = 1;
+      }
+    }
     static assignParentId(elem) {
       return elem.parent().attr('id');
     }
     static assignChildId(elem) {
+      var id = null;
+
       if (elem.children('ul').length === 1) {
-        return elem.children('ul').attr('id');
+        id = elem.children('ul').attr('id');
       }
+      return id;
     }
     static assignSiblingIds(elem) {
       var siblings = elem.siblings('li');
