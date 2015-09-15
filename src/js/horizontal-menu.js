@@ -15,9 +15,9 @@ $(function() {
         }
       }
     }
-    notifyObservers(event, messageObj) {
+    notifyObservers(msg) {
       for (var i = 0; i < this.observerList.length; i++) {
-        this.observerList[i].trigger(event);
+        this.observerList[i].receiveNotification(msg);
       }
     }
   }
@@ -89,7 +89,69 @@ $(function() {
       super();
       this.id = id;
       this.elem = $('#' + id);
-      this.openState = 'closed';
+      this.parentId = List.assignParentId(this.elem);
+      this.childIds = List.assignChildIds(this.elem);
+      this._openState = 'closed';
+    }
+    init() {
+      this.elem.addClass('hm-list-closed');
+      this.registerObservers();
+      // todo: handle active trail
+      return this;
+    }
+    get openState() {
+      return this._openState;
+    }
+    set openState(newState) {
+      this._openState = newState;
+      var classes = this.elem.attr('class').split(' ');
+
+      var matches = classes.filter(c => c.match('hm-list-') !== null);
+
+      matches.forEach(m => {
+        this.elem.removeClass(m);
+      });
+
+      this.elem.addClass('hm-list-' + newState);
+    }
+    registerObservers() {
+      var observerIds = [];
+
+      observerIds.push(this.parentId);
+      this.childIds.forEach(id => {
+        observerIds.push(id);
+      });
+
+      observerIds.forEach(id => {
+      var obj = Menu.loadComponent(id);
+        this.addObserver(obj);
+      }, this);
+
+      return this;
+    }
+    receiveNotification(msg) {
+      switch (msg.title) {
+        case 'list-is-opening':
+          if (this.openState === 'open') {
+            this.openState === 'closing';
+            this.notifyObservers(msg);
+          } else if (
+            this.openState === 'closed' &&
+            msg.signature === this.parentId
+          ) {
+            this.openState = 'opening'
+          }
+          break;
+      }
+    }
+    static assignParentId(elem) {
+      return elem.parent().attr('id');
+    }
+    static assignChildIds(elem) {
+      var children = elem.children('li');
+      return children.map(function() {
+        return $(this).attr('id');
+      }).get();
     }
   }
 
@@ -106,21 +168,6 @@ $(function() {
       this.registerObservers();
       return this;
     }
-    // what if family props are added in the constructor so that full objects are able to be added as observers?
-    // that way the subject doens't need to mess with passing in ids and class names
-    // and then when child state is needed, get child, run init (which adds observers) if necessary
-    // when is registering observers necessary? outside object shouldn't have to fuss
-    // but i think it's reasonble that when notifying observers, the subject can call init (use interface) and then
-    // run common method
-
-    // in order to avoid each object have a fully loaded version of all objects, now we have ids
-    // at some point, these ids will be needed to init objects
-    // a DB approach could be taken where a unique id is provided and the corresponding class is returned
-    // that could be better than making subjects know too much about their observers
-
-    // also, how should observers we stored, as ids or objects?
-    // options are:
-    // #1 store as ids, when notified, init object
     hasChild() {
       return this.childId ? true : false;
     }
@@ -143,9 +190,35 @@ $(function() {
       if (!this.hasChild()) { return; }
 
       var child = new List(this.childId);
+      child.init();
       if (child.openState === 'closed') {
-        // notify observers 'list-is-opening';
-        var test = 1;
+        var msg = {
+          title: 'list-is-opening',
+          signature: this.id
+        };
+        this.notifyObservers(msg);
+      }
+    }
+    receiveNotification(msg) {
+      switch (msg.title) {
+        case 'list-is-opening':
+          if (this.id === msg.signature) { return; }
+
+          // default message if child has no children OR if child state is 'closed'
+          var newMsg = {
+            title: 'item-is-inactive',
+            signature: this.id
+          };
+
+          if (this.hasChild()) {
+            var child = new List(this.childId);
+            child.init();
+            if (child.openState === 'open') {
+              newMsg = msg;
+            }
+          }
+          this.notifyObservers(newMsg);
+          break;
       }
     }
     static assignParentId(elem) {
