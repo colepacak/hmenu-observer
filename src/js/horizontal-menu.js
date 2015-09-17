@@ -37,21 +37,23 @@ $(function() {
       var uls = $('ul', this.elem);
       uls.each(function() {
         assignId.call(this, 'hm-list-');
-        assignClass.call(this, 'hm-list');
+        assignClass.call(this, ['hm-list', 'hm-list-closed']);
       });
 
       var lis = $('li', this.elem);
       lis.each(function() {
         assignId.call(this, 'hm-item-');
-        assignClass.call(this, 'hm-item');
+        assignClass.call(this, ['hm-item']);
       });
 
       function assignId(prefix) {
         $(this).attr('id', prefix + $.uuid());
       }
 
-      function assignClass(name) {
-        $(this).addClass(name);
+      function assignClass(arr) {
+        arr.forEach(c => {
+          $(this).addClass(c);
+        });
       }
 
       return this;
@@ -91,12 +93,10 @@ $(function() {
       this.elem = $('#' + id);
       this.parentId = List.assignParentId(this.elem);
       this.childIds = List.assignChildIds(this.elem);
-      this._openState = 'closed';
+      this._openState = List.assignOpenState(this.elem);
     }
     init() {
-      this.elem.addClass('hm-list-closed');
       this.registerObservers();
-      // todo: handle active trail
       return this;
     }
     get openState() {
@@ -139,7 +139,15 @@ $(function() {
             this.openState === 'closed' &&
             msg.signature === this.parentId
           ) {
-            this.openState = 'opening'
+            this.openState = 'opening';
+          }
+          break;
+        case 'list-can-open':
+          if (
+            this.openState === 'opening' &&
+            msg.signature === this.parentId
+          ) {
+            this.openState = 'open';
           }
           break;
       }
@@ -153,6 +161,19 @@ $(function() {
         return $(this).attr('id');
       }).get();
     }
+    static assignOpenState(elem) {
+      var classes = elem.attr('class').split(' ');
+
+      var matches = classes.filter(c => c.match('hm-list-') !== null);
+
+      if (matches.length === 1) {
+        var m = matches[0];
+        return m.replace('hm-list-', '');
+      } else {
+        var e = new Error('horizontal menu: too many open state classes on list element');
+        throw e.message;
+      }
+    }
   }
 
   class Item extends Subject {
@@ -163,6 +184,7 @@ $(function() {
       this.parentId = Item.assignParentId(this.elem);
       this.childId = Item.assignChildId(this.elem);
       this.siblingIds = Item.assignSiblingIds.call(this, this.elem);
+      this._numInactiveSiblings = 0;
     }
     init() {
       this.registerObservers();
@@ -170,6 +192,16 @@ $(function() {
     }
     hasChild() {
       return this.childId ? true : false;
+    }
+    getChildOpenState() {
+      if (this.hasChild()) {
+        var child = new List(this.childId);
+        child.init();
+        return child.openState;
+      } else {
+        var e = Error('item with id ' + this.id + ' has no child');
+        throw e.message;
+      }
     }
     registerObservers() {
       var observerIds = [];
@@ -190,7 +222,6 @@ $(function() {
       if (!this.hasChild()) { return; }
 
       var child = new List(this.childId);
-      child.init();
       if (child.openState === 'closed') {
         var msg = {
           title: 'list-is-opening',
@@ -210,15 +241,35 @@ $(function() {
             signature: this.id
           };
 
-          if (this.hasChild()) {
-            var child = new List(this.childId);
-            child.init();
-            if (child.openState === 'open') {
-              newMsg = msg;
-            }
+          if (
+            this.hasChild() &&
+            this.getChildOpenState() === 'open'
+          ) {
+            newMsg = msg;
           }
+          this.init();
           this.notifyObservers(newMsg);
           break;
+        case 'item-is-inactive':
+          if (
+            this.siblingIds.find(id => id === msg.signature) &&
+            this.getChildOpenState() === 'opening'
+          ) {
+            this.init();
+            this.siblingIsInactive();
+          }
+          break;
+      }
+    }
+    siblingIsInactive() {
+      this._numInactiveSiblings++;
+      if (this._numInactiveSiblings === this.siblingIds.length) {
+        var msg = {
+          title: 'list-can-open',
+          signature: this.id
+        };
+        this.notifyObservers(msg);
+        this._numInactiveSiblings = 0;
       }
     }
     static assignParentId(elem) {

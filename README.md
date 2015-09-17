@@ -1,1 +1,2 @@
 TODO:
+* handle active trail
