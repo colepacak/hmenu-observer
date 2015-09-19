@@ -30,20 +30,22 @@ $(function() {
     }
     init() {
       this
-        .assignIds()
+        .assignDOMProperties()
         .bindEvents();
     }
-    assignIds() {
+    assignDOMProperties() {
       var uls = $('ul', this.elem);
       uls.each(function() {
         assignId.call(this, 'hm-list-');
         assignClass.call(this, ['hm-list', 'hm-list-closed']);
+        assignAttr.call(this, 'num-inactive-children', 0);
       });
 
       var lis = $('li', this.elem);
       lis.each(function() {
         assignId.call(this, 'hm-item-');
         assignClass.call(this, ['hm-item']);
+        assignAttr.call(this, 'num-inactive-siblings', 0);
       });
 
       function assignId(prefix) {
@@ -54,6 +56,10 @@ $(function() {
         arr.forEach(c => {
           $(this).addClass(c);
         });
+      }
+
+      function assignAttr(name, val) {
+        $(this).attr('hm-' + name, val);
       }
 
       return this;
@@ -117,7 +123,9 @@ $(function() {
     registerObservers() {
       var observerIds = [];
 
-      observerIds.push(this.parentId);
+      if (typeof this.parentId !== 'undefined') {
+        observerIds.push(this.parentId);
+      }
       this.childIds.forEach(id => {
         observerIds.push(id);
       });
@@ -132,14 +140,24 @@ $(function() {
     receiveNotification(msg) {
       switch (msg.title) {
         case 'list-is-opening':
-          if (this.openState === 'open') {
-            this.openState === 'closing';
+          if (
+            this.openState === 'open' &&
+            this.childIds.indexOf(msg.signature) === -1
+          ) {
+            // begin closing process, unless child was clicked
+            this.openState = 'closing';
+            this.init();
             this.notifyObservers(msg);
           } else if (
             this.openState === 'closed' &&
             msg.signature === this.parentId
           ) {
             this.openState = 'opening';
+          }
+          break;
+        case 'item-is-inactive':
+          if (this.openState === 'closing') {
+            this.childIsInactive();
           }
           break;
         case 'list-can-open':
@@ -150,6 +168,26 @@ $(function() {
             this.openState = 'open';
           }
           break;
+      }
+    }
+    childIsInactive() {
+      this.elem.attr('hm-num-inactive-children', increment);
+      var numInactiveChildren = parseInt(this.elem.attr('hm-num-inactive-children'));
+
+      if (numInactiveChildren === this.childIds.length) {
+        var msg = {
+          title: 'list-has-closed',
+          signature: this.id
+        };
+        this.init();
+        this.notifyObservers(msg);
+        this.openState = 'closed';
+        this.elem.attr('hm-num-inactive-children', 0);
+      }
+
+      function increment(i, val) {
+        var intVal = parseInt(val);
+        return intVal + 1;
       }
     }
     static assignParentId(elem) {
@@ -184,7 +222,6 @@ $(function() {
       this.parentId = Item.assignParentId(this.elem);
       this.childId = Item.assignChildId(this.elem);
       this.siblingIds = Item.assignSiblingIds.call(this, this.elem);
-      this._numInactiveSiblings = 0;
     }
     init() {
       this.registerObservers();
@@ -206,7 +243,14 @@ $(function() {
     registerObservers() {
       var observerIds = [];
 
-      observerIds.push(this.parentId, this.childId);
+      if (this.parentId !== null) {
+        observerIds.push(this.parentId);
+      }
+
+      if (this.childId !== null) {
+        observerIds.push(this.childId);
+      }
+
       this.siblingIds.forEach(id => {
         observerIds.push(id);
       });
@@ -231,16 +275,24 @@ $(function() {
       }
     }
     receiveNotification(msg) {
+      var newMsg;
       switch (msg.title) {
         case 'list-is-opening':
-          if (this.id === msg.signature) { return; }
+          if (
+            this.id === msg.signature ||
+            (this.hasChild() &&
+            this.getChildOpenState() === 'closing')
+          ) {
+            return;
+          }
 
           // default message if child has no children OR if child state is 'closed'
-          var newMsg = {
+          newMsg = {
             title: 'item-is-inactive',
             signature: this.id
           };
 
+          // forward message along if child is open
           if (
             this.hasChild() &&
             this.getChildOpenState() === 'open'
@@ -252,24 +304,42 @@ $(function() {
           break;
         case 'item-is-inactive':
           if (
-            this.siblingIds.find(id => id === msg.signature) &&
+            this.siblingIds.indexOf(msg.signature) !== -1 &&
+            this.hasChild() &&
             this.getChildOpenState() === 'opening'
           ) {
             this.init();
             this.siblingIsInactive();
           }
           break;
+        case 'list-has-closed':
+          if (msg.signature === this.childId) {
+            newMsg = {
+              title: 'item-is-inactive',
+              signature: this.id
+            };
+            this.init();
+            this.notifyObservers(newMsg);
+          }
+          break;
       }
     }
     siblingIsInactive() {
-      this._numInactiveSiblings++;
-      if (this._numInactiveSiblings === this.siblingIds.length) {
+      this.elem.attr('hm-num-inactive-siblings', increment);
+      var numInactiveSiblings = parseInt(this.elem.attr('hm-num-inactive-siblings'));
+
+      if (numInactiveSiblings === this.siblingIds.length) {
         var msg = {
           title: 'list-can-open',
           signature: this.id
         };
         this.notifyObservers(msg);
-        this._numInactiveSiblings = 0;
+        this.elem.attr('hm-num-inactive-siblings', 0);
+      }
+
+      function increment(i, val) {
+        var intVal = parseInt(val);
+        return intVal + 1;
       }
     }
     static assignParentId(elem) {
@@ -293,5 +363,4 @@ $(function() {
 
   var menu = new Menu('.horizontal-menu');
   menu.init();
-
 });
