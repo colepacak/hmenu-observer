@@ -140,15 +140,22 @@ $(function() {
     receiveNotification(msg) {
       switch (msg.title) {
         case 'list-is-opening':
+
+          // todo: make more elegant
+          // bail if open and signature belongs to child
           if (
             this.openState === 'open' &&
-            this.childIds.indexOf(msg.signature) === -1
+            this.childIds.indexOf(msg.signature) !== -1
           ) {
-            // begin closing process, unless child was clicked
+            return;
+          }
+
+          if (this.openState === 'open') {
             this.openState = 'closing';
             this.init();
             this.notifyObservers(msg);
           } else if (
+            // closed and signature is parent's
             this.openState === 'closed' &&
             msg.signature === this.parentId
           ) {
@@ -180,9 +187,9 @@ $(function() {
           signature: this.id
         };
         this.init();
-        this.notifyObservers(msg);
         this.openState = 'closed';
         this.elem.attr('hm-num-inactive-children', 0);
+        this.notifyObservers(msg);
       }
 
       function increment(i, val) {
@@ -266,13 +273,11 @@ $(function() {
       if (!this.hasChild()) { return; }
 
       var child = new List(this.childId);
-      if (child.openState === 'closed') {
-        var msg = {
-          title: 'list-is-opening',
-          signature: this.id
-        };
-        this.notifyObservers(msg);
-      }
+      var msg = {
+        title: 'list-is-opening',
+        signature: this.id
+      };
+      this.notifyObservers(msg);
     }
     receiveNotification(msg) {
       var newMsg;
