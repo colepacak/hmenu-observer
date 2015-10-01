@@ -22,6 +22,14 @@ $(function() {
       }
       this.observerList[channel].push(item);
     }
+    removeObserver(item, channel) {
+      if (!this.observerList.hasOwnProperty(channel)) { return; }
+      for (var i = 0; i < this.observerList[channel].length; i++) {
+        if (this.observerList[channel][i]['id'] === item.id) {
+          this.observerList[channel].splice(i, 1);
+        }
+      }
+    }
     notifyObservers(msg) {
       if (this.observerList.hasOwnProperty(msg.channel)) {
         for (var i = 0; i < this.observerList[msg.channel].length; i++) {
@@ -48,14 +56,14 @@ $(function() {
     assignDOMProperties() {
       var uls = $('ul', this.elem);
       uls.each(function() {
-        assignId.call(this, 'hm-list-');
+        //assignId.call(this, 'hm-list-');
         assignClass.call(this, ['hm-list', 'hm-list-closed']);
         assignAttr.call(this, 'num-inactive-children', 0);
       });
 
       var lis = $('li', this.elem);
       lis.each(function() {
-        assignId.call(this, 'hm-item-');
+        //assignId.call(this, 'hm-item-');
         assignClass.call(this, ['hm-item']);
       });
 
@@ -135,7 +143,7 @@ $(function() {
     registerObservers() {
       // parent
       if (typeof this.parentId !== 'undefined') {
-        var parent = Menu.loadComponent(parentId);
+        var parent = Menu.loadComponent(this.parentId);
         this.addObserver(parent, 'list-has-closed');
       }
       // children
@@ -163,13 +171,26 @@ $(function() {
           }
           break;
         case 'item-is-inactive':
-          if (this.childIntendsToOpen === null) {
-            this.childIsInactive(this.childIds.length);
+          this.init();
+          this.childIsInactive(msg);
+          break;
+        case 'item-intends-to-open-child-list':
+          if (typeof this.elem.attr('hm-item-intends-to-open-child-list') === 'undefined') {
+            // change to getter/setter
+            this.elem.attr('hm-item-intends-to-open-child-list', msg.signature);
+            this.childIntendsToOpen = msg.signature;
+
+            var newMsg = {
+              channel: 'list-is-opening',
+              signature: msg.list
+            };
+            this.init();
+            var itemWithIntent = new Item(msg.signature);
+            this.removeObserver(itemWithIntent, 'list-is-opening');
+            this.notifyObservers(newMsg);
           } else {
-            if (msg.signature === this.childIntendsToOpen) {
-              var e = new Error('Horizontal Menu: Signature of inactive item matches item intending to open');
-              throw e.message;
-            }
+            var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
+            throw e.message;
           }
           break;
         //
@@ -209,29 +230,40 @@ $(function() {
         //  break;
       }
     }
-    childIsInactive() {
+    childIsInactive(msg) {
+      if (msg.signature === this.childIntendsToOpen) {
+        var e = new Error('Horizontal Menu: Signature of inactive item matches item intending to open');
+        throw e.message;
+      }
+
       // increment inactive children
       this.elem.attr('hm-num-inactive-children', increment);
       var numInactiveChildren = parseInt(this.elem.attr('hm-num-inactive-children'));
+      var totalPossibleChildren = this.childIntendsToOpen === null ? this.childIds.length : this.childIds.length - 1;
 
-      // differnt total based on val of this.childItendsToOpen
-      // as a result, different messsage
-
-      if (numInactiveChildren === this.childIds.length) {
-        var msg = {
-          channel: 'list-has-closed',
-          signature: this.id
-        };
-        this.init();
-        this.openState = 'closed';
-        this.elem.attr('hm-num-inactive-children', 0);
-        this.notifyObservers(msg);
+      if (numInactiveChildren === totalPossibleChildren) {
+        this.allPossibleChildrenInactive();
       }
 
       function increment(i, val) {
         var intVal = parseInt(val);
         return intVal + 1;
       }
+    }
+    allPossibleChildrenInactive() {
+      var msg = {
+        signature: this.id
+      };
+
+      if (this.childIntendsToOpen === null) {
+        this.openState = 'closed';
+        msg.channel = 'list-has-closed';
+      } else {
+        msg.channel = 'list-can-open';
+      }
+
+      this.elem.attr('hm-num-inactive-children', 0);
+      this.notifyObservers(msg);
     }
     static assignParentId(elem) {
       return elem.parent().attr('id');
@@ -256,7 +288,7 @@ $(function() {
       }
     }
     static assignChildIntendsToOpen(elem) {
-      var attrVal = elem.attr('hm-child-intends-to-open');
+      var attrVal = elem.attr('hm-item-intends-to-open-child-list');
       return typeof attrVal !== 'undefined' ? attrVal : null;
     }
   }
@@ -279,7 +311,6 @@ $(function() {
     getChildOpenState() {
       if (this.hasChild()) {
         var child = new List(this.childId);
-        child.init();
         return child.openState;
       } else {
         var e = Error('item with id ' + this.id + ' has no child');
@@ -303,11 +334,18 @@ $(function() {
     handleClick() {
       if (!this.hasChild()) { return; }
 
-      var msg = {
+      var listIsOpening = {
         channel: 'list-is-opening',
         signature: this.childId
       };
-      this.notifyObservers(msg);
+
+      var itemIntendsToOpenChildList = {
+        channel: 'item-intends-to-open-child-list',
+        signature: this.id,
+        list: this.childId
+      };
+      this.notifyObservers(listIsOpening);
+      this.notifyObservers(itemIntendsToOpenChildList);
     }
     receiveNotification(msg) {
       switch (msg.channel) {
@@ -335,6 +373,7 @@ $(function() {
                 channel: 'item-is-inactive',
                 signature: this.id
               };
+              this.init();
               this.notifyObservers(newMsg);
             } else if (this.getChildOpenState() === 'open') {
               this.notifyObservers(msg);
