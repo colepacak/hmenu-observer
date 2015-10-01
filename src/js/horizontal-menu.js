@@ -150,6 +150,7 @@ $(function() {
       this.childIds.forEach(id => {
       var child = Menu.loadComponent(id);
         this.addObserver(child, 'list-is-opening');
+        this.addObserver(child, 'list-can-open');
       }, this);
 
       return this;
@@ -179,6 +180,7 @@ $(function() {
             // change to getter/setter
             this.elem.attr('hm-item-intends-to-open-child-list', msg.signature);
             this.childIntendsToOpen = msg.signature;
+            //
 
             var newMsg = {
               channel: 'list-is-opening',
@@ -193,41 +195,14 @@ $(function() {
             throw e.message;
           }
           break;
-        //
-        //  // todo: make more elegant
-        //  // bail if open and signature belongs to child
-        //  if (
-        //    this.openState === 'open' &&
-        //    this.childIds.indexOf(msg.signature) !== -1
-        //  ) {
-        //    return;
-        //  }
-        //
-        //  if (this.openState === 'open') {
-        //    this.openState = 'closing';
-        //    this.init();
-        //    this.notifyObservers(msg);
-        //  } else if (
-        //    // closed and signature is parent's
-        //    this.openState === 'closed' &&
-        //    msg.signature === this.parentId
-        //  ) {
-        //    this.openState = 'opening';
-        //  }
-        //  break;
-        //case 'item-is-inactive':
-        //  if (this.openState === 'closing') {
-        //    this.childIsInactive();
-        //  }
-        //  break;
-        //case 'list-can-open':
-        //  if (
-        //    this.openState === 'opening' &&
-        //    msg.signature === this.parentId
-        //  ) {
-        //    this.openState = 'open';
-        //  }
-        //  break;
+        case 'list-can-open':
+          if (
+            this.openState === 'opening' &&
+            msg.signature === this.parentId
+          ) {
+            this.openState = 'open';
+          }
+          break;
       }
     }
     childIsInactive(msg) {
@@ -328,6 +303,7 @@ $(function() {
       if (this.childId !== null) {
         var child = Menu.loadComponent(this.childId);
         this.addObserver(child, 'list-is-opening');
+        this.addObserver(child, 'list-can-open');
       }
       return this;
     }
@@ -380,51 +356,16 @@ $(function() {
             }
           }
           break;
-        //case 'list-is-opening':
-        //  if (
-        //    this.id === msg.signature ||
-        //    (this.hasChild() &&
-        //    this.getChildOpenState() === 'closing')
-        //  ) {
-        //    return;
-        //  }
-        //
-        //  // default message if child has no children OR if child state is 'closed'
-        //  newMsg = {
-        //    channel: 'item-is-inactive',
-        //    signature: this.id
-        //  };
-        //
-        //  // forward message along if child is open
-        //  if (
-        //    this.hasChild() &&
-        //    this.getChildOpenState() === 'open'
-        //  ) {
-        //    newMsg = msg;
-        //  }
-        //  this.init();
-        //  this.notifyObservers(newMsg);
-        //  break;
-        //case 'item-is-inactive':
-        //  if (
-        //    this.siblingIds.indexOf(msg.signature) !== -1 &&
-        //    this.hasChild() &&
-        //    this.getChildOpenState() === 'opening'
-        //  ) {
-        //    this.init();
-        //    this.siblingIsInactive();
-        //  }
-        //  break;
-        //case 'list-has-closed':
-        //  if (msg.signature === this.childId) {
-        //    newMsg = {
-        //      channel: 'item-is-inactive',
-        //      signature: this.id
-        //    };
-        //    this.init();
-        //    this.notifyObservers(newMsg);
-        //  }
-        //  break;
+        case 'list-can-open':
+          if (this.getChildOpenState() === 'opening') {
+            newMsg = {
+              channel: 'list-can-open',
+              signature: this.id
+            };
+            this.init();
+            this.notifyObservers(newMsg);
+          }
+          break;
       }
     }
     static assignParentId(elem) {
