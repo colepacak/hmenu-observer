@@ -156,6 +156,7 @@ $(function() {
       return this;
     }
     receiveNotification(msg) {
+      var newMsg = {};
       switch (msg.channel) {
         case 'list-is-opening':
           if (msg.signature === this.id) {
@@ -167,6 +168,7 @@ $(function() {
             // signature is not mine
             if (this.openState === 'open') {
               this.openState = 'closing';
+              this.init();
               this.notifyObservers(msg);
             }
           }
@@ -182,7 +184,7 @@ $(function() {
             this.childIntendsToOpen = msg.signature;
             //
 
-            var newMsg = {
+            newMsg = {
               channel: 'list-is-opening',
               signature: msg.list
             };
@@ -238,6 +240,7 @@ $(function() {
       }
 
       this.elem.attr('hm-num-inactive-children', 0);
+      this.elem.removeAttr('hm-item-intends-to-open-child-list');
       this.notifyObservers(msg);
     }
     static assignParentId(elem) {
@@ -310,18 +313,27 @@ $(function() {
     handleClick() {
       if (!this.hasChild()) { return; }
 
-      var listIsOpening = {
-        channel: 'list-is-opening',
-        signature: this.childId
-      };
+      var childOpenState = this.getChildOpenState();
 
-      var itemIntendsToOpenChildList = {
-        channel: 'item-intends-to-open-child-list',
-        signature: this.id,
-        list: this.childId
-      };
-      this.notifyObservers(listIsOpening);
-      this.notifyObservers(itemIntendsToOpenChildList);
+      if (childOpenState === 'closed') {
+        var listIsOpening = {
+          channel: 'list-is-opening',
+          signature: this.childId
+        };
+
+        var itemIntendsToOpenChildList = {
+          channel: 'item-intends-to-open-child-list',
+          signature: this.id,
+          list: this.childId
+        };
+        // to child
+        this.notifyObservers(listIsOpening);
+        // to parent
+        this.notifyObservers(itemIntendsToOpenChildList);
+      } else if (childOpenState === 'open') {
+        console.log('yep, im open');
+      }
+
     }
     receiveNotification(msg) {
       switch (msg.channel) {
@@ -333,6 +345,7 @@ $(function() {
               channel: 'item-is-inactive',
               signature: this.id
             };
+            this.init();
             return this.notifyObservers(newMsg);
           }
 
@@ -340,6 +353,7 @@ $(function() {
           if (msg.signature === this.childId) {
             // signature is child's
             if (this.getChildOpenState() === 'closed') {
+              this.init();
               this.notifyObservers(msg);
             }
           } else {
@@ -352,14 +366,28 @@ $(function() {
               this.init();
               this.notifyObservers(newMsg);
             } else if (this.getChildOpenState() === 'open') {
+              this.init();
               this.notifyObservers(msg);
             }
           }
           break;
         case 'list-can-open':
-          if (this.getChildOpenState() === 'opening') {
+          if (
+            this.hasChild() &&
+            this.getChildOpenState() === 'opening'
+          ) {
             newMsg = {
               channel: 'list-can-open',
+              signature: this.id
+            };
+            this.init();
+            this.notifyObservers(newMsg);
+          }
+          break;
+        case 'list-has-closed':
+          if (msg.signature === this.childId) {
+            newMsg = {
+              channel: 'item-is-inactive',
               signature: this.id
             };
             this.init();
