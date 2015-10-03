@@ -57,7 +57,8 @@ $(function() {
       var uls = $('ul', this.elem);
       uls.each(function() {
         //assignId.call(this, 'hm-list-');
-        assignClass.call(this, ['hm-list', 'hm-list-closed']);
+        assignClass.call(this, ['hm-list']);
+        assignAttr.call(this, 'list-open-state', 'closed');
         assignAttr.call(this, 'num-inactive-children', 0);
         assignAttr.call(this, 'item-intends-to-open-child-list', '');
       });
@@ -120,33 +121,23 @@ $(function() {
       this.elem = $('#' + id);
       this.parentId = List.assignParentId(this.elem);
       this.childIds = List.assignChildIds(this.elem);
-      this._openState = List.assignOpenState(this.elem);
     }
     init() {
       this.registerObservers();
       return this;
     }
     get openState() {
-      return this._openState;
+      return this.elem.attr('hm-list-open-state');
     }
-    set openState(newState) {
-      this._openState = newState;
-      var classes = this.elem.attr('class').split(' ');
-
-      var matches = classes.filter(c => c.match('hm-list-') !== null);
-
-      matches.forEach(m => {
-        this.elem.removeClass(m);
-      });
-
-      this.elem.addClass('hm-list-' + newState);
+    set openState(newVal) {
+      this.elem.attr('hm-list-open-state', newVal);
     }
     get itemIntendsToOpenChildList() {
       var state = this.elem.attr('hm-item-intends-to-open-child-list');
       return state !== '' ? state : null;
     }
-    set itemIntendsToOpenChildList(newState) {
-      this.elem.attr('hm-item-intends-to-open-child-list', newState);
+    set itemIntendsToOpenChildList(newVal) {
+      this.elem.attr('hm-item-intends-to-open-child-list', newVal);
     }
     registerObservers() {
       // parent
@@ -303,8 +294,8 @@ $(function() {
     get allowsMessageForwarding() {
       return this.elem.attr('hm-item-allows-message-forwarding');
     }
-    set allowsMessageForwarding(newState) {
-      this.elem.attr('hm-item-allows-message-forwarding', newState);
+    set allowsMessageForwarding(newVal) {
+      this.elem.attr('hm-item-allows-message-forwarding', newVal);
     }
     registerObservers() {
       // parent

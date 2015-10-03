@@ -18,12 +18,12 @@
     width: 100%;
     padding: 0;
     margin: 0;
-    &.hm-list-closed,
-    &.hm-list-opening {
+    &[hm-list-open-state="closed"],
+    &[hm-list-open-state="opening"] {
       bottom: 0;
     }
-    &.hm-list-open,
-    &.hm-list-closing {
+    &[hm-list-open-state="open"],
+    &[hm-list-open-state="closing"] {
       bottom: -30px;
     }
   }
