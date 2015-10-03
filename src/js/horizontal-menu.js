@@ -59,6 +59,7 @@ $(function() {
         //assignId.call(this, 'hm-list-');
         assignClass.call(this, ['hm-list', 'hm-list-closed']);
         assignAttr.call(this, 'num-inactive-children', 0);
+        assignAttr.call(this, 'item-intends-to-open-child-list', '');
       });
 
       var lis = $('li', this.elem);
@@ -120,7 +121,6 @@ $(function() {
       this.parentId = List.assignParentId(this.elem);
       this.childIds = List.assignChildIds(this.elem);
       this._openState = List.assignOpenState(this.elem);
-      this.childIntendsToOpen = List.assignChildIntendsToOpen(this.elem);
     }
     init() {
       this.registerObservers();
@@ -140,6 +140,13 @@ $(function() {
       });
 
       this.elem.addClass('hm-list-' + newState);
+    }
+    get itemIntendsToOpenChildList() {
+      var state = this.elem.attr('hm-item-intends-to-open-child-list');
+      return state !== '' ? state : null;
+    }
+    set itemIntendsToOpenChildList(newState) {
+      this.elem.attr('hm-item-intends-to-open-child-list', newState);
     }
     registerObservers() {
       // parent
@@ -183,11 +190,8 @@ $(function() {
           this.childIsInactive(msg);
           break;
         case 'item-intends-to-open-child-list':
-          if (typeof this.elem.attr('hm-item-intends-to-open-child-list') === 'undefined') {
-            // change to getter/setter
-            this.elem.attr('hm-item-intends-to-open-child-list', msg.signature);
-            this.childIntendsToOpen = msg.signature;
-            //
+          if (this.itemIntendsToOpenChildList === null) {
+            this.itemIntendsToOpenChildList = msg.signature;
 
             newMsg = {
               channel: 'list-must-close',
@@ -213,7 +217,7 @@ $(function() {
       }
     }
     childIsInactive(msg) {
-      if (msg.signature === this.childIntendsToOpen) {
+      if (msg.signature === this.itemIntendsToOpenChildList) {
         var e = new Error('Horizontal Menu: Signature of inactive item matches item intending to open');
         throw e.message;
       }
@@ -221,7 +225,7 @@ $(function() {
       // increment inactive children
       this.elem.attr('hm-num-inactive-children', increment);
       var numInactiveChildren = parseInt(this.elem.attr('hm-num-inactive-children'));
-      var totalPossibleChildren = this.childIntendsToOpen === null ? this.childIds.length : this.childIds.length - 1;
+      var totalPossibleChildren = this.itemIntendsToOpenChildList === null ? this.childIds.length : this.childIds.length - 1;
 
       if (numInactiveChildren === totalPossibleChildren) {
         this.allPossibleChildrenInactive();
@@ -237,7 +241,7 @@ $(function() {
         signature: this.id
       };
 
-      if (this.childIntendsToOpen === null) {
+      if (this.itemIntendsToOpenChildList === null) {
         this.openState = 'closed';
         msg.channel = 'list-has-closed';
       } else {
@@ -245,7 +249,7 @@ $(function() {
       }
 
       this.elem.attr('hm-num-inactive-children', 0);
-      this.elem.removeAttr('hm-item-intends-to-open-child-list');
+      this.itemIntendsToOpenChildList = '';
       this.notifyObservers(msg);
     }
     static assignParentId(elem) {
@@ -269,10 +273,6 @@ $(function() {
         var e = new Error('horizontal menu: too many open state classes on list element');
         throw e.message;
       }
-    }
-    static assignChildIntendsToOpen(elem) {
-      var attrVal = elem.attr('hm-item-intends-to-open-child-list');
-      return typeof attrVal !== 'undefined' ? attrVal : null;
     }
   }
 
