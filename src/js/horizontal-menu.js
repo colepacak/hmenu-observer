@@ -65,6 +65,7 @@ $(function() {
       lis.each(function() {
         //assignId.call(this, 'hm-item-');
         assignClass.call(this, ['hm-item']);
+        assignAttr.call(this, 'item-allows-message-forwarding', 'true');
       });
 
       function assignId(prefix) {
@@ -149,7 +150,7 @@ $(function() {
       // children
       this.childIds.forEach(id => {
       var child = Menu.loadComponent(id);
-        this.addObserver(child, 'list-is-opening');
+        this.addObserver(child, 'list-must-close');
         this.addObserver(child, 'list-can-open');
       }, this);
 
@@ -159,18 +160,22 @@ $(function() {
       var newMsg = {};
       switch (msg.channel) {
         case 'list-is-opening':
-          if (msg.signature === this.id) {
-            // signature is mine
-            if (this.openState === 'closed') {
-              this.openState = 'opening';
-            }
-          } else {
-            // signature is not mine
-            if (this.openState === 'open') {
-              this.openState = 'closing';
-              this.init();
-              this.notifyObservers(msg);
-            }
+          if (
+            msg.signature === this.id &&
+            this.openState === 'closed'
+          ) {
+            this.openState = 'opening';
+          }
+          break;
+        case 'list-must-close':
+          newMsg = {
+            channel: 'list-must-close',
+            signature: this.id
+          };
+          if (this.openState === 'open') {
+            this.openState = 'closing';
+            this.init();
+            this.notifyObservers(newMsg);
           }
           break;
         case 'item-is-inactive':
@@ -185,12 +190,12 @@ $(function() {
             //
 
             newMsg = {
-              channel: 'list-is-opening',
+              channel: 'list-must-close',
               signature: msg.list
             };
             this.init();
             var itemWithIntent = new Item(msg.signature);
-            this.removeObserver(itemWithIntent, 'list-is-opening');
+            this.removeObserver(itemWithIntent, 'list-must-close');
             this.notifyObservers(newMsg);
           } else {
             var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
@@ -295,6 +300,12 @@ $(function() {
         throw e.message;
       }
     }
+    get allowsMessageForwarding() {
+      return this.elem.attr('hm-item-allows-message-forwarding');
+    }
+    set allowsMessageForwarding(newState) {
+      this.elem.attr('hm-item-allows-message-forwarding', newState);
+    }
     registerObservers() {
       // parent
       if (this.parentId !== null) {
@@ -307,6 +318,7 @@ $(function() {
         var child = Menu.loadComponent(this.childId);
         this.addObserver(child, 'list-is-opening');
         this.addObserver(child, 'list-can-open');
+        this.addObserver(child, 'list-must-close');
       }
       return this;
     }
@@ -331,13 +343,19 @@ $(function() {
         // to parent
         this.notifyObservers(itemIntendsToOpenChildList);
       } else if (childOpenState === 'open') {
-        console.log('yep, im open');
+        this.allowsMessageForwarding = 'false';
+        var listMustClose = {
+          channel: 'list-must-close',
+          signature: this.id
+        };
+        // to child
+        this.notifyObservers(listMustClose);
       }
 
     }
     receiveNotification(msg) {
       switch (msg.channel) {
-        case 'list-is-opening':
+        case 'list-must-close':
           var newMsg;
           // has no child
           if (!this.hasChild()) {
@@ -385,13 +403,20 @@ $(function() {
           }
           break;
         case 'list-has-closed':
-          if (msg.signature === this.childId) {
+          if (msg.signature !== this.childId) {
+            var e = new Error("Horizontal Menu: an item has been informed that a non-child list has closed");
+            throw e.message;
+          }
+
+          if (this.allowsMessageForwarding === 'true') {
             newMsg = {
               channel: 'item-is-inactive',
               signature: this.id
             };
             this.init();
             this.notifyObservers(newMsg);
+          } else {
+            this.allowsMessageForwarding = 'true';
           }
           break;
       }
