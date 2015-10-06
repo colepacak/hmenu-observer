@@ -203,6 +203,9 @@ $(function() {
             msg.signature === this.parentId
           ) {
             this.openState = 'open';
+            this.elem.animate({
+              bottom: -30
+            }, 500);
           }
           break;
       }
@@ -231,17 +234,27 @@ $(function() {
       var msg = {
         signature: this.id
       };
+      var promise;
 
       if (this.itemIntendsToOpenChildList === null) {
         this.openState = 'closed';
+        promise = this.elem.animate({
+          bottom: 0
+        }, 500).promise();
         msg.channel = 'list-has-closed';
       } else {
+        var dfd = $.Deferred();
+        promise = dfd.resolve();
         msg.channel = 'list-can-open';
       }
 
-      this.elem.attr('hm-num-inactive-children', 0);
-      this.itemIntendsToOpenChildList = '';
-      this.notifyObservers(msg);
+      promise.then(notifyCallback.bind(this));
+
+      function notifyCallback() {
+        this.elem.attr('hm-num-inactive-children', 0);
+        this.itemIntendsToOpenChildList = '';
+        this.notifyObservers(msg);
+      }
     }
     static assignParentId(elem) {
       return elem.parent().attr('id');
@@ -251,19 +264,6 @@ $(function() {
       return children.map(function() {
         return $(this).attr('id');
       }).get();
-    }
-    static assignOpenState(elem) {
-      var classes = elem.attr('class').split(' ');
-
-      var matches = classes.filter(c => c.match('hm-list-') !== null);
-
-      if (matches.length === 1) {
-        var m = matches[0];
-        return m.replace('hm-list-', '');
-      } else {
-        var e = new Error('horizontal menu: too many open state classes on list element');
-        throw e.message;
-      }
     }
   }
 
