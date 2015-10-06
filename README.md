@@ -1,6 +1,5 @@
 TODO:
 * change receiveNotification from switch to dynamic case to something like handleMessageThatMessageName
-* improve Item hasChild and getChildOpenState combo
 * handle active trail
 * make option to pass in animation duration
 

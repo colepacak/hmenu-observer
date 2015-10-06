@@ -51,7 +51,7 @@ $(function() {
         assignAttr.call(this, [
           { name: 'list-open-state', val: 'closed' },
           { name: 'num-inactive-children', val: 0 },
-          { name: 'item-intends-to-open-child-list', val: '' }
+          { name: 'ItemIntendsToOpenChildList', val: '' }
         ]);
       });
 
@@ -129,81 +129,80 @@ $(function() {
       this.elem.attr('hm-list-open-state', newVal);
     }
     get itemIntendsToOpenChildList() {
-      var state = this.elem.attr('hm-item-intends-to-open-child-list');
+      var state = this.elem.attr('hm-ItemIntendsToOpenChildList');
       return state !== '' ? state : null;
     }
     set itemIntendsToOpenChildList(newVal) {
-      this.elem.attr('hm-item-intends-to-open-child-list', newVal);
+      this.elem.attr('hm-ItemIntendsToOpenChildList', newVal);
     }
     registerObservers() {
       // parent
       if (typeof this.parentId !== 'undefined') {
         var parent = Menu.loadComponent(this.parentId);
-        this.addObserver(parent, 'list-has-closed');
+        this.addObserver(parent, 'ListHasClosed');
       }
       // children
       this.childIds.forEach(id => {
       var child = Menu.loadComponent(id);
-        this.addObserver(child, 'list-must-close');
-        this.addObserver(child, 'list-can-open');
+        this.addObserver(child, 'ListMustClose');
+        this.addObserver(child, 'ListCanOpen');
       }, this);
 
       return this;
     }
     receiveNotification(msg) {
-      var newMsg = {};
-      switch (msg.channel) {
-        case 'list-is-opening':
-          if (
-            msg.signature === this.id &&
-            this.openState === 'closed'
-          ) {
-            this.openState = 'opening';
-          }
-          break;
-        case 'list-must-close':
-          newMsg = {
-            channel: 'list-must-close',
-            signature: this.id
-          };
-          if (this.openState === 'open') {
-            this.openState = 'closing';
-            this.init();
-            this.notifyObservers(newMsg);
-          }
-          break;
-        case 'item-is-inactive':
-          this.init();
-          this.childIsInactive(msg);
-          break;
-        case 'item-intends-to-open-child-list':
-          if (this.itemIntendsToOpenChildList === null) {
-            this.itemIntendsToOpenChildList = msg.signature;
+      // add a check that method exists
+      this['rnThat' + msg.channel](msg);
+    }
+    rnThatListIsOpening(msg) {
+      if (
+        msg.signature === this.id &&
+        this.openState === 'closed'
+      ) {
+        this.openState = 'opening';
+      }
+    }
+    rnThatListMustClose(msg) {
+      var newMsg = {
+        channel: 'ListMustClose',
+        signature: this.id
+      };
+      if (this.openState === 'open') {
+        this.openState = 'closing';
+        this.init();
+        this.notifyObservers(newMsg);
+      }
+    }
+    rnThatItemIsInactive(msg) {
+      this.init();
+      this.childIsInactive(msg);
+    }
+    rnThatItemIntendsToOpenChildList(msg) {
+      if (this.itemIntendsToOpenChildList === null) {
+        this.itemIntendsToOpenChildList = msg.signature;
 
-            newMsg = {
-              channel: 'list-must-close',
-              signature: msg.list
-            };
-            this.init();
-            var itemWithIntent = new Item(msg.signature);
-            this.removeObserver(itemWithIntent, 'list-must-close');
-            this.notifyObservers(newMsg);
-          } else {
-            var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
-            throw e.message;
-          }
-          break;
-        case 'list-can-open':
-          if (
-            this.openState === 'opening' &&
-            msg.signature === this.parentId
-          ) {
-            this.openState = 'open';
-            this.elem.animate({
-              bottom: -30
-            }, 500);
-          }
-          break;
+        var newMsg = {
+          channel: 'ListMustClose',
+          signature: msg.list
+        };
+        this.init();
+        var itemWithIntent = new Item(msg.signature);
+        this.removeObserver(itemWithIntent, 'ListMustClose');
+        this.notifyObservers(newMsg);
+      } else {
+        var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
+        throw e.message;
+      }
+    }
+    rnThatListCanOpen(msg) {
+      if (
+        this.openState === 'opening' &&
+        msg.signature === this.parentId
+      ) {
+        this.openState = 'open';
+        this.elem.animate({
+          bottom: -30
+        }, 500);
       }
     }
     childIsInactive(msg) {
@@ -237,16 +236,16 @@ $(function() {
         promise = this.elem.animate({
           bottom: 0
         }, 500).promise();
-        msg.channel = 'list-has-closed';
+        msg.channel = 'ListHasClosed';
       } else {
         var dfd = $.Deferred();
         promise = dfd.resolve();
-        msg.channel = 'list-can-open';
+        msg.channel = 'ListCanOpen';
       }
 
-      promise.then(notifyCallback.bind(this));
+      promise.then(notifyCallback.bind(this, msg));
 
-      function notifyCallback() {
+      function notifyCallback(msg) {
         this.elem.attr('hm-num-inactive-children', 0);
         this.itemIntendsToOpenChildList = '';
         this.notifyObservers(msg);
@@ -297,15 +296,15 @@ $(function() {
       // parent
       if (this.parentId !== null) {
         var parent = Menu.loadComponent(this.parentId);
-        this.addObserver(parent, 'item-is-inactive');
-        this.addObserver(parent, 'item-intends-to-open-child-list');
+        this.addObserver(parent, 'ItemIsInactive');
+        this.addObserver(parent, 'ItemIntendsToOpenChildList');
       }
       // child
       if (this.childId !== null) {
         var child = Menu.loadComponent(this.childId);
-        this.addObserver(child, 'list-is-opening');
-        this.addObserver(child, 'list-can-open');
-        this.addObserver(child, 'list-must-close');
+        this.addObserver(child, 'ListIsOpening');
+        this.addObserver(child, 'ListCanOpen');
+        this.addObserver(child, 'ListMustClose');
       }
       return this;
     }
@@ -316,12 +315,12 @@ $(function() {
 
       if (childOpenState === 'closed') {
         var listIsOpening = {
-          channel: 'list-is-opening',
+          channel: 'ListIsOpening',
           signature: this.childId
         };
 
         var itemIntendsToOpenChildList = {
-          channel: 'item-intends-to-open-child-list',
+          channel: 'ItemIntendsToOpenChildList',
           signature: this.id,
           list: this.childId
         };
@@ -332,7 +331,7 @@ $(function() {
       } else if (childOpenState === 'open') {
         this.allowsMessageForwarding = 'false';
         var listMustClose = {
-          channel: 'list-must-close',
+          channel: 'ListMustClose',
           signature: this.id
         };
         // to child
@@ -342,12 +341,12 @@ $(function() {
     }
     receiveNotification(msg) {
       switch (msg.channel) {
-        case 'list-must-close':
+        case 'ListMustClose':
           var newMsg;
           // has no child
           if (!this.hasChild()) {
             newMsg = {
-              channel: 'item-is-inactive',
+              channel: 'ItemIsInactive',
               signature: this.id
             };
             this.init();
@@ -365,7 +364,7 @@ $(function() {
             // signature is not child's
             if (this.getChildOpenState() === 'closed') {
               newMsg = {
-                channel: 'item-is-inactive',
+                channel: 'ItemIsInactive',
                 signature: this.id
               };
               this.init();
@@ -376,20 +375,20 @@ $(function() {
             }
           }
           break;
-        case 'list-can-open':
+        case 'ListCanOpen':
           if (
             this.hasChild() &&
             this.getChildOpenState() === 'opening'
           ) {
             newMsg = {
-              channel: 'list-can-open',
+              channel: 'ListCanOpen',
               signature: this.id
             };
             this.init();
             this.notifyObservers(newMsg);
           }
           break;
-        case 'list-has-closed':
+        case 'ListHasClosed':
           if (msg.signature !== this.childId) {
             var e = new Error("Horizontal Menu: an item has been informed that a non-child list has closed");
             throw e.message;
@@ -397,7 +396,7 @@ $(function() {
 
           if (this.allowsMessageForwarding === 'true') {
             newMsg = {
-              channel: 'item-is-inactive',
+              channel: 'ItemIsInactive',
               signature: this.id
             };
             this.init();
