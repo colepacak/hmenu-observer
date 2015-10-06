@@ -1,13 +1,3 @@
-Array.prototype.contains = function(elem) {
-  var contains;
-  if (this.indexOf(elem) !== -1) {
-    contains = true;
-  } else {
-    contains = true;
-  }
-  return contains;
-};
-
 $(function() {
 
   class Subject {
@@ -58,16 +48,20 @@ $(function() {
       uls.each(function() {
         //assignId.call(this, 'hm-list-');
         assignClass.call(this, ['hm-list']);
-        assignAttr.call(this, 'list-open-state', 'closed');
-        assignAttr.call(this, 'num-inactive-children', 0);
-        assignAttr.call(this, 'item-intends-to-open-child-list', '');
+        assignAttr.call(this, [
+          { name: 'list-open-state', val: 'closed' },
+          { name: 'num-inactive-children', val: 0 },
+          { name: 'item-intends-to-open-child-list', val: '' }
+        ]);
       });
 
       var lis = $('li', this.elem);
       lis.each(function() {
         //assignId.call(this, 'hm-item-');
         assignClass.call(this, ['hm-item']);
-        assignAttr.call(this, 'item-allows-message-forwarding', 'true');
+        assignAttr.call(this, [
+          { name: 'item-allows-message-forwarding', val: 'true' }
+        ]);
       });
 
       function assignId(prefix) {
@@ -80,8 +74,10 @@ $(function() {
         });
       }
 
-      function assignAttr(name, val) {
-        $(this).attr('hm-' + name, val);
+      function assignAttr(arr) {
+        arr.forEach(o => {
+          $(this).attr('hm-' + o.name, o.val);
+        });
       }
 
       return this;
