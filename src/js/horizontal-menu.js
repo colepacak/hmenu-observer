@@ -50,6 +50,7 @@ $(function() {
     init() {
       this
         .assignDOMProperties()
+        .setActiveTrail()
         .bindEvents();
     }
     assignDOMProperties() {
@@ -105,6 +106,18 @@ $(function() {
         obj = new List(id);
       }
       return obj;
+    }
+    setActiveTrail() {
+      // get all lis with active-trail class
+      var activeItems = $('li.active-trail', this.elem);
+      activeItems.each(function() {
+        var item = new Item($(this).attr('id'));
+        item
+          .init()
+          .setActiveTrail();
+      });
+      // init each one and run setActiveTrail
+      return this;
     }
     bindEvents() {
       $('a', this.elem).on('click', function(e) {
@@ -207,7 +220,7 @@ $(function() {
     }
     rnThatListCanOpen(msg) {
       if (
-        this.openState === 'opening' &&
+        //this.openState === 'opening' &&
         msg.signature === this.parentId
       ) {
         this.openState = 'open';
@@ -351,7 +364,15 @@ $(function() {
         // to child
         this.notifyObservers(listMustClose);
       }
+    }
+    setActiveTrail() {
+      if (!this.hasChild()) { return; }
 
+      var newMsg = {
+        channel: 'ListCanOpen',
+        signature: this.id
+      };
+      this.notifyObservers(newMsg);
     }
     rnThatListMustClose(msg) {
       var newMsg;

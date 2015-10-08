@@ -1,5 +1,5 @@
 TODO:
-* handle active trail
+* handle active trail 
 * make option to pass in animation duration
 * move classes to own module
 * restrict clicking of anchors to ones with parents that have class that designates children
