@@ -30,6 +30,15 @@ $(function() {
         throw e.message;
       }
     }
+    receiveNotification(msg) {
+      // add a check that method exists
+      if (this.constructor.prototype.hasOwnProperty('rnThat' + msg.channel)) {
+        this['rnThat' + msg.channel](msg);
+      } else {
+        var e = new Error('Horizontal Menu: this object does not have the rnThat' + msg.channel + ' method');
+        throw e;
+      }
+    }
   }
 
   class Menu {
@@ -51,7 +60,7 @@ $(function() {
         assignAttr.call(this, [
           { name: 'list-open-state', val: 'closed' },
           { name: 'num-inactive-children', val: 0 },
-          { name: 'ItemIntendsToOpenChildList', val: '' }
+          { name: 'item-intends-to-open-child-list', val: '' }
         ]);
       });
 
@@ -101,7 +110,7 @@ $(function() {
       $('a', this.elem).on('click', function(e) {
         e.preventDefault();
         var item = new Item($(this).parent().attr('id'));
-        // init, which registers observers, then notify observers
+
         item
           .init()
           .handleClick();
@@ -129,11 +138,14 @@ $(function() {
       this.elem.attr('hm-list-open-state', newVal);
     }
     get itemIntendsToOpenChildList() {
-      var state = this.elem.attr('hm-ItemIntendsToOpenChildList');
+      var state = this.elem.attr('hm-item-intends-to-open-child-list');
       return state !== '' ? state : null;
     }
     set itemIntendsToOpenChildList(newVal) {
-      this.elem.attr('hm-ItemIntendsToOpenChildList', newVal);
+      this.elem.attr('hm-item-intends-to-open-child-list', newVal);
+    }
+    hasItemWithIntentToOpen() {
+      return this.itemIntendsToOpenChildList !== null;
     }
     registerObservers() {
       // parent
@@ -150,10 +162,6 @@ $(function() {
 
       return this;
     }
-    receiveNotification(msg) {
-      // add a check that method exists
-      this['rnThat' + msg.channel](msg);
-    }
     rnThatListIsOpening(msg) {
       if (
         msg.signature === this.id &&
@@ -163,12 +171,13 @@ $(function() {
       }
     }
     rnThatListMustClose(msg) {
-      var newMsg = {
-        channel: 'ListMustClose',
-        signature: this.id
-      };
       if (this.openState === 'open') {
         this.openState = 'closing';
+
+        var newMsg = {
+          channel: 'ListMustClose',
+          signature: this.id
+        };
         this.init();
         this.notifyObservers(newMsg);
       }
@@ -178,6 +187,7 @@ $(function() {
       this.childIsInactive(msg);
     }
     rnThatItemIntendsToOpenChildList(msg) {
+      // make sure an item hasn't already registered its intent to open
       if (this.itemIntendsToOpenChildList === null) {
         this.itemIntendsToOpenChildList = msg.signature;
 
@@ -186,6 +196,7 @@ $(function() {
           signature: msg.list
         };
         this.init();
+        // tell all child items to close their lists, except for the one that just registered its intent
         var itemWithIntent = new Item(msg.signature);
         this.removeObserver(itemWithIntent, 'ListMustClose');
         this.notifyObservers(newMsg);
@@ -206,12 +217,13 @@ $(function() {
       }
     }
     childIsInactive(msg) {
+      // ensure that the child item that is not inactive isn't also the one that wants to open
       if (msg.signature === this.itemIntendsToOpenChildList) {
         var e = new Error('Horizontal Menu: Signature of inactive item matches item intending to open');
         throw e.message;
       }
 
-      // increment inactive children
+      // increment inactive children until all are inactive, excluding the one that intends to open
       this.elem.attr('hm-num-inactive-children', increment);
       var numInactiveChildren = parseInt(this.elem.attr('hm-num-inactive-children'));
       var totalPossibleChildren = this.itemIntendsToOpenChildList === null ? this.childIds.length : this.childIds.length - 1;
@@ -226,10 +238,10 @@ $(function() {
       }
     }
     allPossibleChildrenInactive() {
+      var promise;
       var msg = {
         signature: this.id
       };
-      var promise;
 
       if (this.itemIntendsToOpenChildList === null) {
         this.openState = 'closed';
@@ -246,6 +258,7 @@ $(function() {
       promise.then(notifyCallback.bind(this, msg));
 
       function notifyCallback(msg) {
+        // reset tracking attributes and notify
         this.elem.attr('hm-num-inactive-children', 0);
         this.itemIntendsToOpenChildList = '';
         this.notifyObservers(msg);
@@ -339,72 +352,68 @@ $(function() {
       }
 
     }
-    receiveNotification(msg) {
-      switch (msg.channel) {
-        case 'ListMustClose':
-          var newMsg;
-          // has no child
-          if (!this.hasChild()) {
-            newMsg = {
-              channel: 'ItemIsInactive',
-              signature: this.id
-            };
-            this.init();
-            return this.notifyObservers(newMsg);
-          }
+    rnThatListMustClose(msg) {
+      var newMsg;
+      // has no child
+      if (!this.hasChild()) {
+        newMsg = {
+          channel: 'ItemIsInactive',
+          signature: this.id
+        };
+        this.init();
+        return this.notifyObservers(newMsg);
+      }
 
-          // has child
-          if (msg.signature === this.childId) {
-            // signature is child's
-            if (this.getChildOpenState() === 'closed') {
-              this.init();
-              this.notifyObservers(msg);
-            }
-          } else {
-            // signature is not child's
-            if (this.getChildOpenState() === 'closed') {
-              newMsg = {
-                channel: 'ItemIsInactive',
-                signature: this.id
-              };
-              this.init();
-              this.notifyObservers(newMsg);
-            } else if (this.getChildOpenState() === 'open') {
-              this.init();
-              this.notifyObservers(msg);
-            }
-          }
-          break;
-        case 'ListCanOpen':
-          if (
-            this.hasChild() &&
-            this.getChildOpenState() === 'opening'
-          ) {
-            newMsg = {
-              channel: 'ListCanOpen',
-              signature: this.id
-            };
-            this.init();
-            this.notifyObservers(newMsg);
-          }
-          break;
-        case 'ListHasClosed':
-          if (msg.signature !== this.childId) {
-            var e = new Error("Horizontal Menu: an item has been informed that a non-child list has closed");
-            throw e.message;
-          }
+      // has child
+      if (msg.signature === this.childId) {
+        // signature is child's
+        if (this.getChildOpenState() === 'closed') {
+          this.init();
+          this.notifyObservers(msg);
+        }
+      } else {
+        // signature is not child's
+        if (this.getChildOpenState() === 'closed') {
+          newMsg = {
+            channel: 'ItemIsInactive',
+            signature: this.id
+          };
+          this.init();
+          this.notifyObservers(newMsg);
+        } else if (this.getChildOpenState() === 'open') {
+          this.init();
+          this.notifyObservers(msg);
+        }
+      }
+    }
+    rnThatListCanOpen(msg) {
+      if (
+        this.hasChild() &&
+        this.getChildOpenState() === 'opening'
+      ) {
+        var newMsg = {
+          channel: 'ListCanOpen',
+          signature: this.id
+        };
+        this.init();
+        this.notifyObservers(newMsg);
+      }
+    }
+    rnThatListHasClosed(msg) {
+      if (msg.signature !== this.childId) {
+        var e = new Error("Horizontal Menu: an item has been informed that a non-child list has closed");
+        throw e.message;
+      }
 
-          if (this.allowsMessageForwarding === 'true') {
-            newMsg = {
-              channel: 'ItemIsInactive',
-              signature: this.id
-            };
-            this.init();
-            this.notifyObservers(newMsg);
-          } else {
-            this.allowsMessageForwarding = 'true';
-          }
-          break;
+      if (this.allowsMessageForwarding === 'true') {
+        var newMsg = {
+          channel: 'ItemIsInactive',
+          signature: this.id
+        };
+        this.init();
+        this.notifyObservers(newMsg);
+      } else {
+        this.allowsMessageForwarding = 'true';
       }
     }
     static assignParentId(elem) {
