@@ -188,21 +188,21 @@ $(function() {
     }
     rnThatItemIntendsToOpenChildList(msg) {
       // make sure an item hasn't already registered its intent to open
-      if (this.itemIntendsToOpenChildList === null) {
+      if (this.hasItemWithIntentToOpen()) {
+        var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
+        throw e.message;
+      } else {
         this.itemIntendsToOpenChildList = msg.signature;
 
         var newMsg = {
           channel: 'ListMustClose',
-          signature: msg.list
+          signature: this.id
         };
         this.init();
         // tell all child items to close their lists, except for the one that just registered its intent
         var itemWithIntent = new Item(msg.signature);
         this.removeObserver(itemWithIntent, 'ListMustClose');
         this.notifyObservers(newMsg);
-      } else {
-        var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
-        throw e.message;
       }
     }
     rnThatListCanOpen(msg) {
@@ -226,7 +226,7 @@ $(function() {
       // increment inactive children until all are inactive, excluding the one that intends to open
       this.elem.attr('hm-num-inactive-children', increment);
       var numInactiveChildren = parseInt(this.elem.attr('hm-num-inactive-children'));
-      var totalPossibleChildren = this.itemIntendsToOpenChildList === null ? this.childIds.length : this.childIds.length - 1;
+      var totalPossibleChildren = this.hasItemWithIntentToOpen() ? this.childIds.length - 1 : this.childIds.length;
 
       if (numInactiveChildren === totalPossibleChildren) {
         this.allPossibleChildrenInactive();
@@ -243,16 +243,16 @@ $(function() {
         signature: this.id
       };
 
-      if (this.itemIntendsToOpenChildList === null) {
+      if (this.hasItemWithIntentToOpen()) {
+        var dfd = $.Deferred();
+        promise = dfd.resolve();
+        msg.channel = 'ListCanOpen';
+      } else {
         this.openState = 'closed';
         promise = this.elem.animate({
           bottom: 0
         }, 500).promise();
         msg.channel = 'ListHasClosed';
-      } else {
-        var dfd = $.Deferred();
-        promise = dfd.resolve();
-        msg.channel = 'ListCanOpen';
       }
 
       promise.then(notifyCallback.bind(this, msg));
@@ -337,11 +337,12 @@ $(function() {
           signature: this.id,
           list: this.childId
         };
-        // to child
+        // to child,
         this.notifyObservers(listIsOpening);
         // to parent
         this.notifyObservers(itemIntendsToOpenChildList);
       } else if (childOpenState === 'open') {
+        // tell children to close but prevent communication from traveling further up the tree
         this.allowsMessageForwarding = 'false';
         var listMustClose = {
           channel: 'ListMustClose',
@@ -354,8 +355,11 @@ $(function() {
     }
     rnThatListMustClose(msg) {
       var newMsg;
-      // has no child
-      if (!this.hasChild()) {
+
+      if (
+        !this.hasChild() ||
+        this.getChildOpenState() === 'closed'
+      ) {
         newMsg = {
           channel: 'ItemIsInactive',
           signature: this.id
@@ -364,26 +368,9 @@ $(function() {
         return this.notifyObservers(newMsg);
       }
 
-      // has child
-      if (msg.signature === this.childId) {
-        // signature is child's
-        if (this.getChildOpenState() === 'closed') {
-          this.init();
-          this.notifyObservers(msg);
-        }
-      } else {
-        // signature is not child's
-        if (this.getChildOpenState() === 'closed') {
-          newMsg = {
-            channel: 'ItemIsInactive',
-            signature: this.id
-          };
-          this.init();
-          this.notifyObservers(newMsg);
-        } else if (this.getChildOpenState() === 'open') {
-          this.init();
-          this.notifyObservers(msg);
-        }
+      if (this.getChildOpenState() === 'open') {
+        this.init();
+        this.notifyObservers(msg);
       }
     }
     rnThatListCanOpen(msg) {
