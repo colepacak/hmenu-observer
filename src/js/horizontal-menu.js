@@ -1,3 +1,14 @@
+Array.prototype.contains = function(item) {
+  var contains = false;
+  for (var i = 0; i < this.length; i++) {
+    if (this[i] === item) {
+      contains = true;
+      break;
+    }
+  }
+  return contains;
+};
+
 $(function() {
 
   class Subject {
@@ -108,15 +119,60 @@ $(function() {
       return obj;
     }
     setActiveTrail() {
-      // get all lis with active-trail class
-      var activeItems = $('li.active-trail', this.elem);
-      activeItems.each(function() {
-        var item = new Item($(this).attr('id'));
-        item
-          .init()
-          .setActiveTrail();
-      });
-      // init each one and run setActiveTrail
+      // first, remove open lists that do not have an active trail parent item
+      // next, open the child lists of any active trail items that aren't open
+      var activeTrailIds = $('li.active-trail', this.elem).map(function() {
+        return $(this).attr('id');
+      }).get();
+      var openListIds = $('ul[hm-list-open-state="open"]', this.elem).map(function() {
+        return $(this).attr('id');
+      }).get().reverse();
+
+      closeNonActiveTrailLists(openListIds, 0)
+        .then(openClosedActiveTrailLists.bind(this, activeTrailIds, openListIds, 0))
+
+      function closeNonActiveTrailLists(list, i) {
+        var dfd = $.Deferred();
+        if (i >= list.length) {
+          return dfd.resolve();
+        }
+
+        var id = list[i];
+        var openList = new List(id);
+        // if open list does NOT have a parent item that is active state
+        if (activeTrailIds.contains(openList.parentId)) {
+          // stop loop once a parent item is found that is active state
+          return dfd.resolve();
+        } else {
+          return openList.close().then(function() {
+            i++;
+            return closeNonActiveTrailLists(list, i);
+          });
+        }
+      }
+
+      function openClosedActiveTrailLists(activeIds, openIds, i) {
+        var dfd = $.Deferred();
+        if (i >= activeIds.length) {
+          return dfd.resolve();
+        }
+
+        var promise;
+        var activeTrailItem = new Item(activeIds[i]);
+
+        if (openIds.contains(activeTrailItem.childId)) {
+          promise = dfd.resolve();
+        } else {
+          var list = new List(activeTrailItem.childId);
+          promise = list.open().promise();
+        }
+
+        return promise.then(function() {
+          i++;
+          return openClosedActiveTrailLists(activeIds, openIds, i);
+        });
+      }
+
       return this;
     }
     bindEvents() {
@@ -223,10 +279,7 @@ $(function() {
         //this.openState === 'opening' &&
         msg.signature === this.parentId
       ) {
-        this.openState = 'open';
-        this.elem.animate({
-          bottom: -30
-        }, 500);
+        return this.open();
       }
     }
     childIsInactive(msg) {
@@ -261,10 +314,7 @@ $(function() {
         promise = dfd.resolve();
         msg.channel = 'ListCanOpen';
       } else {
-        this.openState = 'closed';
-        promise = this.elem.animate({
-          bottom: 0
-        }, 500).promise();
+        promise = this.close();
         msg.channel = 'ListHasClosed';
       }
 
@@ -276,6 +326,18 @@ $(function() {
         this.itemIntendsToOpenChildList = '';
         this.notifyObservers(msg);
       }
+    }
+    open() {
+      this.openState = 'open';
+      return this.elem.animate({
+        bottom: -30
+      }, 500);
+    }
+    close() {
+      this.openState = 'closed';
+      return this.elem.animate({
+        bottom: 0
+      }, 500).promise();
     }
     static assignParentId(elem) {
       return elem.parent().attr('id');
