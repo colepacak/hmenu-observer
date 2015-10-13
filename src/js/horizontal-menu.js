@@ -129,7 +129,7 @@ $(function() {
       }).get().reverse();
 
       closeNonActiveTrailLists(openListIds, 0)
-        .then(openClosedActiveTrailLists.bind(this, activeTrailIds, openListIds, 0))
+        .then(openClosedActiveTrailLists.bind(this, activeTrailIds, openListIds, 0));
 
       function closeNonActiveTrailLists(list, i) {
         var dfd = $.Deferred();
@@ -184,6 +184,26 @@ $(function() {
           .init()
           .handleClick();
       });
+
+      this.elem.hover(handleMouseenter, handleMouseleave.bind(this));
+
+      function handleMouseenter(e) {
+        $(e.currentTarget).addClass('hm-is-hovered');
+      }
+
+      function handleMouseleave(e) {
+        var mouseleaveTimer;
+
+        $(e.currentTarget).removeClass('hm-is-hovered');
+        mouseleaveTimer = setTimeout(resetActiveTrail.bind(this), 1000);
+
+        function resetActiveTrail() {
+          if (!this.elem.hasClass('hm-is-hovered')) {
+            this.setActiveTrail();
+          }
+          clearTimeout(mouseleaveTimer);
+        }
+      }
       return this;
     }
   }
@@ -330,7 +350,7 @@ $(function() {
     open() {
       this.openState = 'open';
       return this.elem.animate({
-        bottom: -30
+        bottom: -28
       }, 500);
     }
     close() {
@@ -426,15 +446,6 @@ $(function() {
         // to child
         this.notifyObservers(listMustClose);
       }
-    }
-    setActiveTrail() {
-      if (!this.hasChild()) { return; }
-
-      var newMsg = {
-        channel: 'ListCanOpen',
-        signature: this.id
-      };
-      this.notifyObservers(newMsg);
     }
     rnThatListMustClose(msg) {
       var newMsg;
