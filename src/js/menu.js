@@ -2,11 +2,23 @@ import Subject from './subject';
 import List from './list';
 import Item from './item';
 
+Array.prototype.contains = function(item) {
+  var contains = false;
+  for (var i = 0; i < this.length; i++) {
+    if (this[i] === item) {
+      contains = true;
+      break;
+    }
+  }
+  return contains;
+};
+
 class Menu {
-  constructor(elem) {
+  constructor(elem, settings) {
     this.elem = $(elem);
     this.lists = null;
     this.items = null;
+    this.settings = settings;
   }
   init() {
     this
@@ -15,6 +27,11 @@ class Menu {
       .bindEvents();
   }
   assignDOMProperties() {
+    // menu
+    //assignId.call(this.elem, 'hm-menu-');
+    addSettingAttrs(this.settings, this.elem);
+
+    // uls
     var uls = $('ul', this.elem);
     uls.each(function() {
       //assignId.call(this, 'hm-list-');
@@ -26,6 +43,7 @@ class Menu {
       ]);
     });
 
+    // lis
     var lis = $('li', this.elem);
     lis.each(function() {
       //assignId.call(this, 'hm-item-');
@@ -34,6 +52,26 @@ class Menu {
         { name: 'item-allows-message-forwarding', val: 'true' }
       ]);
     });
+
+    // set plugin settings as attrs on DOM element, convert from camel case to spinal case for use in html
+    function addSettingAttrs(settings, target) {
+      for (var s in settings) {
+        var matchIndexes = [];
+        var reg = /([A-Z])/g;
+        var matches;
+        while ((matches = reg.exec(s)) !== null) {
+          matchIndexes.push(matches.index);
+        }
+
+        var attrName = s.toLowerCase();
+        matchIndexes.forEach((m, i) => {
+          // consider the addition of previous dashs by adding the current index to the match index
+          attrName = attrName.slice(0, m + i) + '-' + attrName.slice(m + i);
+        });
+
+        target.attr('hm-' + attrName, settings[s]);
+      }
+    }
 
     function assignId(prefix) {
       $(this).attr('id', prefix + $.uuid());
@@ -67,6 +105,9 @@ class Menu {
       obj = new List(id);
     }
     return obj;
+  }
+  static getSettings(s) {
+    return this.settings[s];
   }
   setActiveTrail() {
     // first, remove open lists that do not have an active trail parent item
@@ -110,7 +151,10 @@ class Menu {
       var promise;
       var activeTrailItem = new Item(activeIds[i]);
 
-      if (openIds.contains(activeTrailItem.childId)) {
+      if (
+        openIds.contains(activeTrailItem.childId) ||
+        !activeTrailItem.hasChild()
+      ) {
         promise = dfd.resolve();
       } else {
         var list = new List(activeTrailItem.childId);

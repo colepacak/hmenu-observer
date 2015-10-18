@@ -143,15 +143,29 @@ class List extends Subject {
   }
   open() {
     this.openState = 'open';
+    var dur = this.getMenuSetting('hm-anim-duration');
     return this.elem.animate({
       bottom: -28
-    }, 500);
+    }, dur);
   }
   close() {
     this.openState = 'closed';
+    var dur = this.getMenuSetting('hm-anim-duration');
     return this.elem.animate({
       bottom: 0
-    }, 500).promise();
+    }, dur).promise();
+  }
+  getMenuSetting(s) {
+    var setting = this.elem
+      .closest('.horizontal-menu')
+      .attr(s);
+
+    if (typeof setting !== 'undefined') {
+      return setting;
+    } else {
+      var e = new Error('Horizontal Menu: setting ' + s + ' does not exist on menu');
+      throw e.message;
+    }
   }
   static assignParentId(elem) {
     return elem.parent().attr('id');

@@ -1,17 +1,15 @@
 import Menu from './menu.js';
 
-Array.prototype.contains = function(item) {
-  var contains = false;
-  for (var i = 0; i < this.length; i++) {
-    if (this[i] === item) {
-      contains = true;
-      break;
-    }
-  }
-  return contains;
-};
+(function($) {
+  $.fn.horizontalMenu = function(options) {
 
-$(function() {
-  var menu = new Menu('.horizontal-menu');
-  menu.init();
-});
+    var settings = $.extend({
+      animDuration: 500
+    }, options);
+
+    return this.each(function() {
+      var menu = new Menu(this, settings);
+      menu.init();
+    });
+  }
+})(jQuery);
