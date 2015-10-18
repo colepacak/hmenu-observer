@@ -7,6 +7,7 @@
   }
   &.horizontal-menu {
     position: relative;
+    width: 500px;
     > ul {
       position: relative;
     }
@@ -15,15 +16,14 @@
     @include legacy-pie-clearfix;
     position: absolute;
     z-index: 0;
-    width: 100%;
     padding: 0;
     margin: 0;
     bottom: 0;
+    background: #f1f1f1;
   }
   li {
     position: relative;
     float: left;
-    width: 50%;
     text-align: center;
   }
   a {
