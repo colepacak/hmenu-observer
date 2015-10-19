@@ -184,7 +184,17 @@ class Menu {
       item
         .init()
         .handleClick();
+
     });
+
+    $(window).on('resize', setResponsiveULWidth.bind(this));
+
+    function setResponsiveULWidth() {
+      var menuWidth = this.elem.outerWidth();
+      $('ul', this.elem).css({
+        width: menuWidth
+      });
+    }
 
     this.elem.hover(handleMouseenter, handleMouseleave.bind(this));
 
