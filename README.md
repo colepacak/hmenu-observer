@@ -12,4 +12,4 @@ Done:
 * trigger setActiveTrail on mouseoff
 * move classes to own module
 * make option to pass in animation duration
-
+* even/odd row classes

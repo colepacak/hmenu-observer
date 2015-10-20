@@ -28,7 +28,6 @@ class Menu {
   }
   assignDOMProperties() {
     // menu
-    //assignId.call(this.elem, 'hm-menu-');
     addSettingAttrs(this.settings, this.elem);
 
     // uls
@@ -50,6 +49,8 @@ class Menu {
       });
     });
 
+    setStripeClass.call(this, uls.eq(0), 'even');
+
     // lis
     var lis = $('li', this.elem);
     lis.each(function() {
@@ -59,6 +60,22 @@ class Menu {
         { name: 'item-allows-message-forwarding', val: 'true' }
       ]);
     });
+
+    function setStripeClass(elem, c) {
+      elem.addClass('hm-list-' + c);
+      // get next elem
+      // either next child ul or start back at the top with the first child of the top-level ul that doesn't have a stripe class
+      var nextElem = elem.find('ul').not('.hm-list-even, .hm-list-odd').eq(0);
+      var newC = c === 'even' ? 'odd' : 'even';
+
+      if (!nextElem.length) {
+        nextElem = $('ul', this.elem).eq(0).find('ul').not('.hm-list-even, .hm-list-odd').eq(0);
+        newC = 'odd';
+        if (!nextElem.length) { return; }
+      }
+
+      return setStripeClass.call(this, nextElem, newC);
+    }
 
     // set plugin settings as attrs on DOM element, convert from camel case to spinal case for use in html
     function addSettingAttrs(settings, target) {
@@ -189,14 +206,14 @@ class Menu {
 
     $(window).on('resize', setResponsiveULWidth.bind(this));
 
+    this.elem.hover(handleMouseenter, handleMouseleave.bind(this));
+
     function setResponsiveULWidth() {
       var menuWidth = this.elem.outerWidth();
       $('ul', this.elem).css({
         width: menuWidth
       });
     }
-
-    this.elem.hover(handleMouseenter, handleMouseleave.bind(this));
 
     function handleMouseenter(e) {
       $(e.currentTarget).addClass('hm-is-hovered');
