@@ -1,4 +1,5 @@
 import Subject from './subject';
+import Container from './container';
 import List from './list';
 import Item from './item';
 
@@ -13,18 +14,14 @@ Array.prototype.contains = function(item) {
   return contains;
 };
 
-class Menu {
+class Menu extends Subject {
   constructor(elem, settings) {
+    super();
     this.elem = $(elem);
-    this.lists = null;
-    this.items = null;
     this.settings = settings;
   }
   init() {
-    this
-      .assignDOMProperties()
-      .setActiveTrail()
-      .bindEvents();
+    this.registerObservers();
   }
   assignDOMProperties() {
     // menu
@@ -32,8 +29,11 @@ class Menu {
 
     // uls
     var uls = $('ul', this.elem);
-    uls.each(function() {
+    uls.each(function(i) {
       //assignId.call(this, 'hm-list-');
+      if (i === 0) {
+        assignClass.call(this, ['hm-list-top-level']);
+      }
       assignClass.call(this, ['hm-list']);
       assignAttr.call(this, [
         { name: 'list-open-state', val: 'closed' },
@@ -114,24 +114,6 @@ class Menu {
     }
 
     return this;
-  }
-  static loadComponent(id) {
-    var obj;
-    var elem = $('#' + id);
-
-    if (!elem.length) { return; }
-
-    var tag = elem.prop('tagName');
-
-    if (tag === 'LI' && elem.hasClass('hm-item')) {
-      obj = new Item(id);
-    } else if (tag === 'UL' && elem.hasClass('hm-list')) {
-      obj = new List(id);
-    }
-    return obj;
-  }
-  static getSettings(s) {
-    return this.settings[s];
   }
   setActiveTrail() {
     // first, remove open lists that do not have an active trail parent item
@@ -233,6 +215,39 @@ class Menu {
       }
     }
     return this;
+  }
+  registerObservers() {
+    // parent
+    var container = ('#horinzontal-menu-container');
+    if (container.length === 1) {
+      var parent = new Container('#horinzontal-menu-container');
+      this.addObserver(parent, 'ListIntendsToOpen');
+      this.addObserver(parent, 'ListHasClosed');
+    }
+    // children
+    var childId = $('.hm-list-top-level', this.elem).attr('id');
+    var child = new List(childId);
+    this.addObserver(child, 'ListTopLevelCanOpen');
+  }
+  static loadComponent(id) {
+    var obj;
+    var elem = $('#' + id);
+
+    if (!elem.length) { return; }
+
+    var tag = elem.prop('tagName');
+
+    if (tag === 'LI' && elem.hasClass('hm-item')) {
+      obj = new Item(id);
+    } else if (tag === 'UL' && elem.hasClass('hm-list')) {
+      obj = new List(id);
+    } else if (elem.hasClass('horizontal-menu')) {
+      obj = new Menu(elem);
+    }
+    return obj;
+  }
+  static getSettings(s) {
+    return this.settings[s];
   }
 }
 
