@@ -30,7 +30,7 @@ class Subject {
   }
   receiveNotification(msg) {
     // add a check that method exists
-    if (this.constructor.prototype.hasOwnProperty('rnThat' + msg.channel)) {
+    if (typeof this['rnThat' + msg.channel] !== 'undefined') {
       this['rnThat' + msg.channel](msg);
     } else {
       var e = new Error('Horizontal Menu: this object does not have the rnThat' + msg.channel + ' method');

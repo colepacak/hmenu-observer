@@ -1,4 +1,4 @@
-import Menu from './menu.js';
+import MenuManager from './menu-manager.js';
 
 (function($) {
   $.fn.horizontalMenu = function(options) {
@@ -8,7 +8,7 @@ import Menu from './menu.js';
     }, options);
 
     return this.each(function() {
-      var menu = new Menu(this, settings);
+      var menu = new MenuManager(this, settings);
       menu.init();
     });
   }

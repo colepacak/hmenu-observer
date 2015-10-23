@@ -1,4 +1,9 @@
 TODO:
+* is MenuManager.loadComponent the right way to go?
+* optimize inheritance
+  * make lists out of both menu container and uls
+  * make items out of both menus and lis
+  * most likely create BaseItem and BaseList classes
 * restrict clicking of anchors to ones with parents that have class that designates children
 
 Done:

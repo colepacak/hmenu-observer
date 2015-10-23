@@ -1,5 +1,3 @@
-import Subject from './subject';
-import Container from './container';
 import List from './list';
 import Item from './item';
 
@@ -14,14 +12,15 @@ Array.prototype.contains = function(item) {
   return contains;
 };
 
-class Menu extends Subject {
+class MenuManager {
   constructor(elem, settings) {
-    super();
     this.elem = $(elem);
     this.settings = settings;
   }
   init() {
-    this.registerObservers();
+    this.assignDOMProperties()
+      .setActiveTrail()
+      .bindEvents();
   }
   assignDOMProperties() {
     // menu
@@ -216,19 +215,6 @@ class Menu extends Subject {
     }
     return this;
   }
-  registerObservers() {
-    // parent
-    var container = ('#horinzontal-menu-container');
-    if (container.length === 1) {
-      var parent = new Container('#horinzontal-menu-container');
-      this.addObserver(parent, 'ListIntendsToOpen');
-      this.addObserver(parent, 'ListHasClosed');
-    }
-    // children
-    var childId = $('.hm-list-top-level', this.elem).attr('id');
-    var child = new List(childId);
-    this.addObserver(child, 'ListTopLevelCanOpen');
-  }
   static loadComponent(id) {
     var obj;
     var elem = $('#' + id);
@@ -241,14 +227,9 @@ class Menu extends Subject {
       obj = new Item(id);
     } else if (tag === 'UL' && elem.hasClass('hm-list')) {
       obj = new List(id);
-    } else if (elem.hasClass('horizontal-menu')) {
-      obj = new Menu(elem);
     }
     return obj;
   }
-  static getSettings(s) {
-    return this.settings[s];
-  }
 }
 
-export default Menu;
+export default MenuManager;
