@@ -37,6 +37,12 @@ class Subject {
       throw e;
     }
   }
+  registerObservers() {
+    this.registerParentObservers();
+    this.registerChildObservers();
+  }
+  registerParentObservers() {}
+  registerChildObservers() {}
 }
 
 export default Subject;

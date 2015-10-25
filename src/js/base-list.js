@@ -12,6 +12,7 @@ class BaseList extends Subject {
   }
   init() {
     this.registerObservers();
+    return this;
   }
   get openState() {
     return this.elem.attr('hm-list-open-state');
@@ -29,11 +30,6 @@ class BaseList extends Subject {
   hasItemWithIntentToOpen() {
     return this.itemIntendsToOpenChildList !== null;
   }
-  registerObservers() {
-    this.registerParentObservers();
-    this.registerChildObservers();
-  }
-  registerParentObservers() {}
   registerChildObservers() {
     this.childIds.forEach(id => {
       var child = new this.childClass(id);

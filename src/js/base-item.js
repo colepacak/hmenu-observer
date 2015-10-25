@@ -9,6 +9,10 @@ class BaseItem extends Subject {
     this.parentId = null;
     this.childId = null;
   }
+  init() {
+    this.registerObservers();
+    return this;
+  }
   hasChild() {
     return this.childId ? true : false;
   }

@@ -8,12 +8,7 @@ class Item extends BaseItem {
     this.parentId = Item.assignParentId(this.elem);
     this.childId = Item.assignChildId(this.elem);
   }
-  init() {
-    this.registerObservers();
-    return this;
-  }
-  registerObservers() {
-    // parent
+  registerParentObservers() {
     if (this.parentId !== null) {
       var parent;
       var parentElem = $('#' + this.parentId);
@@ -27,7 +22,8 @@ class Item extends BaseItem {
       this.addObserver(parent, 'ItemIsInactive');
       this.addObserver(parent, 'ItemIntendsToOpenChildList');
     }
-    // child
+  }
+  registerChildObservers() {
     if (this.childId !== null) {
       var child = new List(this.childId);
       this.addObserver(child, 'ListIsOpening');
