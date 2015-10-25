@@ -40,7 +40,7 @@ class MenuManager {
         { name: 'item-intends-to-open-child-list', val: '' }
       ]);
       // ul width matches that of menu set from css
-      var menuWidth = $(this).closest('.horizontal-menu').outerWidth();
+      var menuWidth = $(this).closest('.hm-menu').outerWidth();
       var parentItemPosLeft = $(this).parent().position().left;
       $(this).css({
         left: -1 * parentItemPosLeft,

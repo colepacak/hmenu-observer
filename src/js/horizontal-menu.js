@@ -1,4 +1,4 @@
-import MenuManager from './menu-manager.js';
+import MenuManager from './menu-manager';
 
 (function($) {
   $.fn.horizontalMenu = function(options) {

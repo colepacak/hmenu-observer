@@ -1,12 +1,40 @@
 import BaseItem from './base-item';
-import MenuManager from './menu-manager';
 import List from './list';
+import TopLevelList from './top-level-list';
 
 class Item extends BaseItem {
   constructor(id) {
     super(id);
     this.parentId = Item.assignParentId(this.elem);
     this.childId = Item.assignChildId(this.elem);
+  }
+  init() {
+    this.registerObservers();
+    return this;
+  }
+  registerObservers() {
+    // parent
+    if (this.parentId !== null) {
+      var parent;
+      var parentElem = $('#' + this.parentId);
+      var parentListIsTopLevel = parentElem.hasClass('hm-list-top-level');
+
+      if (parentListIsTopLevel) {
+        parent = new TopLevelList(this.parentId);
+      } else {
+        parent = new List(this.parentId);
+      }
+      this.addObserver(parent, 'ItemIsInactive');
+      this.addObserver(parent, 'ItemIntendsToOpenChildList');
+    }
+    // child
+    if (this.childId !== null) {
+      var child = new List(this.childId);
+      this.addObserver(child, 'ListIsOpening');
+      this.addObserver(child, 'ListCanOpen');
+      this.addObserver(child, 'ListMustClose');
+    }
+    return this;
   }
   getChildOpenState() {
     if (this.hasChild()) {

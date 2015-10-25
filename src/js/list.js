@@ -5,8 +5,14 @@ class List extends BaseList {
   constructor(id) {
     super(id);
     this.parentId = List.assignParentId(this.elem);
-    this.childIds = List.assignChildIds(this.elem);
+    this.parentClass = Item;
     this.childClass = Item;
+  }
+  registerParentObservers() {
+    if (this.parentId !== null) {
+      var parent = new this.parentClass(this.parentId);
+      this.addObserver(parent, 'ListHasClosed');
+    }
   }
   open() {
     this.openState = 'open';
@@ -24,12 +30,6 @@ class List extends BaseList {
   }
   static assignParentId(elem) {
     return elem.parent().attr('id');
-  }
-  static assignChildIds(elem) {
-    var children = elem.children('li');
-    return children.map(function() {
-      return $(this).attr('id');
-    }).get();
   }
 }
 

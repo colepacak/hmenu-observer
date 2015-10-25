@@ -8,7 +8,7 @@ body {
   }
 }
 
-#horizontal-menu-container {
+#hm-container {
   @include legacy-pie-clearfix;
   #menu-one,
   #menu-two {
@@ -22,7 +22,7 @@ body {
   }
 }
 
-.horizontal-menu {
+.hm-menu {
   position: relative;
   width: 100%;
 }

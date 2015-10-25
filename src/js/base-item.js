@@ -9,10 +9,6 @@ class BaseItem extends Subject {
     this.parentId = null;
     this.childId = null;
   }
-  init() {
-    this.registerObservers();
-    return this;
-  }
   hasChild() {
     return this.childId ? true : false;
   }
@@ -21,22 +17,6 @@ class BaseItem extends Subject {
   }
   set allowsMessageForwarding(newVal) {
     this.elem.attr('hm-item-allows-message-forwarding', newVal);
-  }
-  registerObservers() {
-    // parent
-    if (this.parentId !== null) {
-      var parent = MenuManager.loadComponent(this.parentId);
-      this.addObserver(parent, 'ItemIsInactive');
-      this.addObserver(parent, 'ItemIntendsToOpenChildList');
-    }
-    // child
-    if (this.childId !== null) {
-      var child = MenuManager.loadComponent(this.childId);
-      this.addObserver(child, 'ListIsOpening');
-      this.addObserver(child, 'ListCanOpen');
-      this.addObserver(child, 'ListMustClose');
-    }
-    return this;
   }
   rnThatListMustClose(msg) {
     var newMsg;

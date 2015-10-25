@@ -1,3 +1,3 @@
 $(function() {
-  $('.horizontal-menu').horizontalMenu();
+  $('.hm-menu').horizontalMenu();
 });

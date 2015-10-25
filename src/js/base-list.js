@@ -1,5 +1,5 @@
 import Subject from './subject';
-import MenuManager from './menu-manager';
+//import Subject from './subject';
 
 class BaseList extends Subject {
   constructor(id) {
@@ -7,11 +7,11 @@ class BaseList extends Subject {
     this.id = id;
     this.elem = $('#' + id);
     this.parentId = null;
-    this.childIds = null;
+    this.childIds = BaseList.assignChildIds(this.elem);
+    this.childClass = null;
   }
   init() {
     this.registerObservers();
-    return this;
   }
   get openState() {
     return this.elem.attr('hm-list-open-state');
@@ -30,18 +30,13 @@ class BaseList extends Subject {
     return this.itemIntendsToOpenChildList !== null;
   }
   registerObservers() {
-    // parent
-    if (typeof this.parentId !== 'undefined') {
-      var parent = MenuManager.loadComponent(this.parentId);
-      this.addObserver(parent, 'ListHasClosed');
-      // register menu for top-level lists
-      //if (this.elem.hasClass('hm-list-top-level')) {
-      //  this.addObserver(parent, 'ListIntendsToOpen');
-      //}
-    }
-    // children
+    this.registerParentObservers();
+    this.registerChildObservers();
+  }
+  registerParentObservers() {}
+  registerChildObservers() {
     this.childIds.forEach(id => {
-      var child = MenuManager.loadComponent(id);
+      var child = new this.childClass(id);
       this.addObserver(child, 'ListMustClose');
       this.addObserver(child, 'ListCanOpen');
     }, this);
@@ -77,23 +72,23 @@ class BaseList extends Subject {
     if (this.hasItemWithIntentToOpen()) {
       var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
       throw e.message;
-    } else {
-      this.itemIntendsToOpenChildList = msg.signature;
-
-      this.init();
-      // here is where top level lists need to first get clearance from parent menu before proceeding locally
-      // perhaps this process needs to be stopped and continued later after clearance is received
-
-      // local
-      // tell all child items to close their lists, except for the one that just registered its intent
-      var newMsg = {
-        channel: 'ListMustClose',
-        signature: this.id
-      };
-      var itemWithIntent = new this.childClass(msg.signature);
-      this.removeObserver(itemWithIntent, 'ListMustClose');
-      this.notifyObservers(newMsg);
     }
+
+    this.itemIntendsToOpenChildList = msg.signature;
+
+    this.init();
+    // here is where top level lists need to first get clearance from parent menu before proceeding locally
+    // perhaps this process needs to be stopped and continued later after clearance is received
+
+    // local
+    // tell all child items to close their lists, except for the one that just registered its intent
+    var newMsg = {
+      channel: 'ListMustClose',
+      signature: this.id
+    };
+    var itemWithIntent = new this.childClass(msg.signature);
+    this.removeObserver(itemWithIntent, 'ListMustClose');
+    this.notifyObservers(newMsg);
   }
   rnThatListCanOpen(msg) {
     if (msg.signature === this.parentId) {
@@ -147,7 +142,7 @@ class BaseList extends Subject {
   }
   getMenuSetting(s) {
     var setting = this.elem
-      .closest('.horizontal-menu')
+      .closest('.hm-menu')
       .attr(s);
 
     if (typeof setting !== 'undefined') {
@@ -156,6 +151,12 @@ class BaseList extends Subject {
       var e = new Error('Horizontal Menu: setting ' + s + ' does not exist on menu');
       throw e.message;
     }
+  }
+  static assignChildIds(elem) {
+    var children = elem.children('li');
+    return children.map(function() {
+      return $(this).attr('id');
+    }).get();
   }
 }
 
