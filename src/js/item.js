@@ -4,6 +4,10 @@ import TopLevelList from './top-level-list';
 
 class Item extends BaseItem {
   constructor(id) {
+    if (typeof id === 'undefined') {
+      var e = new Error('Horizontal Menu: no id provided in Item constructor');
+      throw e.message;
+    }
     super(id);
     this.parentId = Item.assignParentId(this.elem);
     this.childId = Item.assignChildId(this.elem);

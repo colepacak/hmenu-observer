@@ -3,35 +3,20 @@ import Menu from './menu';
 
 class Container extends BaseList {
   constructor(id) {
+    if (typeof id === 'undefined') {
+      var e = new Error('Horizontal Menu: no id provided in Container constructor');
+      throw e.message;
+    }
     super(id);
-    this.parentId = Container.assignParentId(this.elem);
     this.childIds = Container.assignChildIds(this.elem);
     this.childClass = Menu;
   }
-  init() {
-    this.registerObservers();
-    return this;
+  static assignChildIds(elem) {
+    var children = elem.find('.hm-menu');
+    return children.map(function() {
+      return $(this).attr('id');
+    }).get();
   }
-  registerObservers() {
-    // parent
-    if (typeof this.parentId !== 'undefined') {
-      var parent = MenuManager.loadComponent(this.parentId);
-      this.addObserver(parent, 'ListHasClosed');
-    }
-    // children
-    this.childIds.forEach(id => {
-      var child = MenuManager.loadComponent(id);
-      this.addObserver(child, 'ListMustClose');
-      this.addObserver(child, 'ListCanOpen');
-    }, this);
-
-    return this;
-  }
-
-  open() {}
-  close() {}
-  static assignParentId(elem) {}
-  static assignChildIds(elem) {}
 }
 
 export default Container;

@@ -23,6 +23,11 @@ class MenuManager {
       .bindEvents();
   }
   assignDOMProperties() {
+    // container
+    assignAttr.call('#hm-container', [
+      { name: 'item-intends-to-open-child-list', val: '' }
+    ]);
+
     // menu
     addSettingAttrs(this.settings, this.elem);
 
@@ -187,7 +192,7 @@ class MenuManager {
 
     $(window).on('resize', setResponsiveULWidth.bind(this));
 
-    this.elem.hover(handleMouseenter, handleMouseleave.bind(this));
+    $('#hm-container').hover(handleMouseenter, handleMouseleave.bind(this));
 
     function setResponsiveULWidth() {
       var menuWidth = this.elem.outerWidth();

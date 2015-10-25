@@ -3,6 +3,10 @@ import MenuManager from './menu-manager';
 
 class BaseItem extends Subject {
   constructor(id) {
+    if (typeof id === 'undefined') {
+      var e = new Error('Horizontal Menu: no id provided in BaseItem constructor');
+      throw e.message;
+    }
     super();
     this.id = id;
     this.elem = $('#' + id);
@@ -22,6 +26,7 @@ class BaseItem extends Subject {
   set allowsMessageForwarding(newVal) {
     this.elem.attr('hm-item-allows-message-forwarding', newVal);
   }
+  getChildOpenState() {}
   rnThatListMustClose(msg) {
     var newMsg;
 

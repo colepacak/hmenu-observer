@@ -3,6 +3,10 @@ import Subject from './subject';
 
 class BaseList extends Subject {
   constructor(id) {
+    if (typeof id === 'undefined') {
+      var e = new Error('Horizontal Menu: no id provided in BaseList constructor');
+      throw e.message;
+    }
     super();
     this.id = id;
     this.elem = $('#' + id);
@@ -39,6 +43,18 @@ class BaseList extends Subject {
 
     return this;
   }
+  rnThatItemIntendsToOpenChildList(msg) {
+    // make sure an item hasn't already registered its intent to open
+    if (this.hasItemWithIntentToOpen()) {
+      var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
+      throw e.message;
+    }
+
+    this.itemIntendsToOpenChildList = msg.signature;
+    this.init();
+
+    this.closeChildrenWithoutIntentToOpen(msg);
+  }
   rnThatListIsOpening(msg) {
     if (
       msg.signature === this.id &&
@@ -63,33 +79,21 @@ class BaseList extends Subject {
     this.init();
     this.childIsInactive(msg);
   }
-  rnThatItemIntendsToOpenChildList(msg) {
-    // make sure an item hasn't already registered its intent to open
-    if (this.hasItemWithIntentToOpen()) {
-      var e = new Error('Horizontal Menu: item#' + msg.signature + ' cannot register intent to open because an item has already registered with this list');
-      throw e.message;
+  rnThatListCanOpen(msg) {
+    if (msg.signature === this.parentId) {
+      return this.open();
     }
-
-    this.itemIntendsToOpenChildList = msg.signature;
-
-    this.init();
-    // here is where top level lists need to first get clearance from parent menu before proceeding locally
-    // perhaps this process needs to be stopped and continued later after clearance is received
-
-    // local
-    // tell all child items to close their lists, except for the one that just registered its intent
+  }
+  closeChildrenWithoutIntentToOpen(msg) {
     var newMsg = {
       channel: 'ListMustClose',
       signature: this.id
     };
     var itemWithIntent = new this.childClass(msg.signature);
+
     this.removeObserver(itemWithIntent, 'ListMustClose');
     this.notifyObservers(newMsg);
-  }
-  rnThatListCanOpen(msg) {
-    if (msg.signature === this.parentId) {
-      return this.open();
-    }
+    return this;
   }
   childIsInactive(msg) {
     // ensure that the child item that is not inactive isn't also the one that wants to open
@@ -118,7 +122,10 @@ class BaseList extends Subject {
       signature: this.id
     };
 
-    if (this.hasItemWithIntentToOpen()) {
+    if (
+      this.hasItemWithIntentToOpen() ||
+      typeof this.close === 'undefined'
+    ) {
       var dfd = $.Deferred();
       promise = dfd.resolve();
       msg.channel = 'ListCanOpen';

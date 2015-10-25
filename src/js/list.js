@@ -3,6 +3,10 @@ import Item from './item';
 
 class List extends BaseList {
   constructor(id) {
+    if (typeof id === 'undefined') {
+      var e = new Error('Horizontal Menu: no id provided in List constructor');
+      throw e.message;
+    }
     super(id);
     this.parentId = List.assignParentId(this.elem);
     this.parentClass = Item;

@@ -1,4 +1,7 @@
 TODO:
+* rethink typeof this.close === 'undefined' in BaseList.allPossibleChildrenInactive
+* reset hm-item-intends-to-open-child-list attr on container after inter-menu action
+* make local changes wait on inter-menu changes
 * is MenuManager.loadComponent the right way to go?
 * optimize inheritance
   * make lists out of both menu container and uls
