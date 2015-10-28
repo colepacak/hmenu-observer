@@ -25,11 +25,15 @@ class MenuManager {
   assignDOMProperties() {
     // container
     assignAttr.call('#hm-container', [
-      { name: 'item-intends-to-open-child-list', val: '' }
+      { name: 'item-intends-to-open-child-list', val: '' },
+      { name: 'num-inactive-children', val: 0 }
     ]);
 
     // menu
     addSettingAttrs(this.settings, this.elem);
+    assignAttr.call('.hm-menu', [
+      { name: 'item-allows-message-forwarding', val: 'true' }
+    ]);
 
     // uls
     var uls = $('ul', this.elem);
@@ -219,21 +223,6 @@ class MenuManager {
       }
     }
     return this;
-  }
-  static loadComponent(id) {
-    var obj;
-    var elem = $('#' + id);
-
-    if (!elem.length) { return; }
-
-    var tag = elem.prop('tagName');
-
-    if (tag === 'LI' && elem.hasClass('hm-item')) {
-      obj = new Item(id);
-    } else if (tag === 'UL' && elem.hasClass('hm-list')) {
-      obj = new List(id);
-    }
-    return obj;
   }
 }
 

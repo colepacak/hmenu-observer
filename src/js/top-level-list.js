@@ -32,15 +32,12 @@ class TopLevelList extends BaseList {
     // here is where top level lists need to first get clearance from parent menu before proceeding locally
     // perhaps this process needs to be stopped and continued later after clearance is received
 
-    // local
-    // tell all child items to close their lists, except for the one that just registered its intent
-    var ListIntendsToOpen = {
+    // notify parent menu
+    var listIntendsToOpen = {
       channel: 'ListIntendsToOpen',
       signature: this.id
     };
-    this.notifyObservers(ListIntendsToOpen);
-
-    this.closeChildrenWithoutIntentToOpen(msg);
+    this.notifyObservers(listIntendsToOpen);
   }
   rnThatListMustClose(msg) {
     var newMsg = {
@@ -52,6 +49,30 @@ class TopLevelList extends BaseList {
   }
   static assignParentId(elem) {
     return elem.closest('.hm-menu').attr('id');
+  }
+  rnThatListCanOpen(msg) {
+    if (msg.signature === this.parentId) {
+      this.init();
+      this.itemIntendsToOpenChildList = '';
+      this.notifyObservers(msg);
+    }
+  }
+  allPossibleChildrenInactive() {
+    var msg = {
+      signature: this.id
+    };
+
+    if (this.hasItemWithIntentToOpen()) {
+      // notify child item that list can open
+      msg.channel = 'ListCanOpen';
+    } else {
+      // notify parent menu, usually when a list within another menu is opening
+      msg.channel = 'ListHasClosed';
+    }
+
+    this.elem.attr('hm-num-inactive-children', 0);
+    this.itemIntendsToOpenChildList = '';
+    this.notifyObservers(msg);
   }
 }
 

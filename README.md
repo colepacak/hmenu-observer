@@ -1,4 +1,5 @@
 TODO:
+* maybe change ListIntendsToOpen to TopLevelListIntendsToOpen
 * rethink typeof this.close === 'undefined' in BaseList.allPossibleChildrenInactive
 * reset hm-item-intends-to-open-child-list attr on container after inter-menu action
 * make local changes wait on inter-menu changes

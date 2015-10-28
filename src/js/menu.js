@@ -15,6 +15,7 @@ class Menu extends BaseItem {
     this.childId = Menu.assignChildId(this.elem);
   }
   getChildOpenState() {
+    // this isn't good enough, the child list - TopLevel - needs to have its own state
     return this.elem.find('ul[hm-list-open-state="open"]').length ? 'open' : 'closed';
   }
   registerParentObservers() {
@@ -41,8 +42,21 @@ class Menu extends BaseItem {
       list: this.childId
     };
     // to parent
-    this.init();
-    this.notifyObservers(itemIntendsToOpenChildList);
+    this.init()
+      .notifyObservers(itemIntendsToOpenChildList);
+  }
+  rnThatListCanOpen(msg) {
+    //if (
+    //  this.hasChild() &&
+    //  this.getChildOpenState() === 'opening'
+    //) {
+      var newMsg = {
+        channel: 'ListCanOpen',
+        signature: this.id
+      };
+      this.init();
+      this.notifyObservers(newMsg);
+    //}
   }
   static assignParentId(elem) {
     return elem.closest('.hm-menu-container').attr('id');

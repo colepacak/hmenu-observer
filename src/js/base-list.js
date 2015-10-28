@@ -122,10 +122,7 @@ class BaseList extends Subject {
       signature: this.id
     };
 
-    if (
-      this.hasItemWithIntentToOpen() ||
-      typeof this.close === 'undefined'
-    ) {
+    if (this.hasItemWithIntentToOpen()) {
       var dfd = $.Deferred();
       promise = dfd.resolve();
       msg.channel = 'ListCanOpen';
